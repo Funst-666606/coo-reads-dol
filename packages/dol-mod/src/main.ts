@@ -20,7 +20,7 @@ import { loadSettings, saveSettings } from './settings.ts'
 import { applyVocabCommand } from './vocab-commands.ts'
 
 const TAG = '[CooBridge]'
-const CLIENT_VERSION = '0.1.3'
+const CLIENT_VERSION = '0.1.4'
 const SUPPORTED_GAME = '0.5.12.13'
 const PORT_BASE = 17321
 const PORT_COUNT = 10
@@ -206,6 +206,7 @@ class Bridge {
   private socket: WebSocket | null = null
   private portIndex = 0
   private retryTimer: ReturnType<typeof setTimeout> | null = null
+  private heartbeat: ReturnType<typeof setInterval> | null = null
   private status: Status = 'idle'
   private lastSceneKey = ''
   private pending = new Map<string, 'sentence' | 'word'>()
@@ -279,6 +280,7 @@ class Bridge {
   // ── 内部 ────────────────────────────────────────────────────────────────
 
   private connect(): void {
+    this.stopHeartbeat()
     const port = this.portBase + this.portIndex
     this.setStatus('connecting')
     let settled = false
@@ -311,15 +313,22 @@ class Bridge {
     }
     ws.onmessage = (ev) => this.onMessage(String(ev.data))
     ws.onerror = () => fail()
-    ws.onclose = () => {
+    ws.onclose = (ev) => {
       if (this.socket === ws) this.socket = null
+      this.stopHeartbeat()
       this.setStatus('offline')
       this.pending.clear()
-      this.scheduleRetry(1500)
+      if (ev.code === 4001) {
+        console.warn(`${TAG} 连接被另一个游戏页面接管，30 秒后再试`)
+        this.scheduleRetry(30_000)
+      } else {
+        this.scheduleRetry(1500)
+      }
     }
   }
 
   private closeSocket(): void {
+    this.stopHeartbeat()
     if (this.retryTimer) {
       clearTimeout(this.retryTimer)
       this.retryTimer = null
@@ -330,6 +339,19 @@ class Bridge {
       /* 忽略 */
     }
     this.socket = null
+  }
+
+  /** 每 20 秒发一次 ping，避免被 World 的 60 秒静默判定踢掉。 */
+  private startHeartbeat(): void {
+    this.stopHeartbeat()
+    this.heartbeat = setInterval(() => this.send({ type: 'ping' }), 20_000)
+  }
+
+  private stopHeartbeat(): void {
+    if (this.heartbeat) {
+      clearInterval(this.heartbeat)
+      this.heartbeat = null
+    }
   }
 
   private scheduleRetry(delay = 1500): void {
@@ -352,6 +374,9 @@ class Bridge {
     switch (msg.type) {
       case 'hello_ok':
         this.setStatus('connected')
+        this.startHeartbeat()
+        // 重连后把当前场景再发一次，避免 Coo 丢掉上下文
+        this.lastSceneKey = ''
         this.onPassage()
         return
       case 'reply':

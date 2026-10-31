@@ -21,7 +21,7 @@ import {
 } from './protocol.ts'
 import { DolServer } from './server.ts'
 
-const VERSION = '0.1.2'
+const VERSION = '0.1.3'
 const MODES: readonly DolMode[] = ['proactive', 'trigger', 'passive']
 
 export interface DolWorldDeps {
@@ -39,6 +39,7 @@ export class DolWorld implements World {
 
   private lastSceneKey = ''
   private lastScene: SceneMsg | null = null
+  private lastConnEventAt = 0
   private commentDay = ''
   private commentsToday = 0
   private mirror: VocabMirror | null = null
@@ -389,6 +390,10 @@ export class DolWorld implements World {
   // ── 来自游戏的事件 ──────────────────────────────────────────────────────
 
   private onConnection(connected: boolean): void {
+    // 断线重连抖动时别刷屏：30 秒内只报一次连接状态变化。
+    const now = Date.now()
+    if (now - this.lastConnEventAt < 30_000) return
+    this.lastConnEventAt = now
     void this.pushEvent({
       type: connected ? 'dol.connected' : 'dol.disconnected',
       text: connected ? '玩家打开了 DoL，模组已连上，可以陪他一起玩了。' : 'DoL 已断开（游戏关了，或模组停了）。',

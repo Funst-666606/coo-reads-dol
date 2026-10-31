@@ -1,4 +1,4 @@
-﻿/**
+/**
  * DolWorld 集成测试：假宿主 + 真 WebSocket 客户端。
  * 覆盖：工具表、场景/学句事件、dol_teach 回传、生词镜像、模式切换、面板数据面。
  */
@@ -167,6 +167,15 @@ test('World：事件、工具回传、生词镜像、模式切换', async () => 
 
     const csv = (await world.invoke('main', 'exportCsv', [])) as string
     assert.match(csv, /"dark"/)
+
+    // 断线重连抖动：30 秒内不重复推连接事件，避免刷屏 Coo
+    ws.terminate()
+    await sleep(60)
+    const ws2 = await connect(`ws://127.0.0.1:${PORT}`)
+    await sleep(80)
+    assert.equal(pushed.filter((p) => p.type === 'dol.connected').length, 1, '重连不应重复报连接')
+    assert.equal(pushed.filter((p) => p.type === 'dol.disconnected').length, 0, '短暂断开不应报断开')
+    ws2.terminate()
   } finally {
     ws.terminate()
     await world.stop()
