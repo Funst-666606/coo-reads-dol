@@ -16,19 +16,19 @@ export function detectI18n(probe: I18nProbe): string | null {
   const names = Array.isArray(probe.modNames) ? probe.modNames.map((n) => String(n)) : []
   const localization = names.find((n) => LOCALIZATION_MOD_RE.test(n))
   if (localization) {
-    return `检测到汉化模组 ${localization}。CooBridge 只支持英文原版，已停用自身。`
+    return `检测到汉化模组 ${localization}。已切换为非学习模式（本次运行有效）。`
   }
 
   if (probe.mainLanguage && !/^en/i.test(probe.mainLanguage)) {
-    return `游戏当前语言是 ${probe.mainLanguage}。CooBridge 只支持英文原版，已停用自身。`
+    return `游戏当前语言是 ${probe.mainLanguage}。已切换为非学习模式（本次运行有效）。`
   }
 
   if (probe.sampleText && isMostlyChinese(probe.sampleText)) {
-    return '游戏正文是中文。CooBridge 只支持英文原版，已停用自身。'
+    return '游戏正文是中文。已切换为非学习模式（本次运行有效）。'
   }
 
   if (probe.documentLang && !/^en/i.test(probe.documentLang)) {
-    return `页面语言是 ${probe.documentLang}。CooBridge 只支持英文原版，已停用自身。`
+    return `页面语言是 ${probe.documentLang}。已切换为非学习模式（本次运行有效）。`
   }
 
   return null
@@ -52,7 +52,7 @@ export function errorText(code: string, message: string): string {
     case 'bad_hello':
       return `协议不匹配：扩展与模组版本不一致${detail}，请同时更新两边`
     case 'i18n_detected':
-      return `检测到中文环境，模组已停用${detail}`
+      return `检测到中文环境，已切换为非学习模式${detail}`
     default:
       return `${code}${detail}`
   }

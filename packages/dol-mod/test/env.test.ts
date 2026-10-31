@@ -10,7 +10,7 @@ test('检测到真正的汉化模组即停用', () => {
   const msg = detectI18n({ modNames: ['TweeReplacer', 'ModI18N'], mainLanguage: 'en' })
   assert.ok(msg)
   assert.match(msg, /ModI18N/)
-  assert.match(msg, /停用/)
+  assert.match(msg, /非学习模式/)
 })
 
 test('通用翻译插件 I18nTweeReplacer 不算汉化（正文英文时放行）', () => {
