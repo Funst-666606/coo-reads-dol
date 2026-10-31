@@ -92,7 +92,26 @@ export default {
 
         function renderPlay(status) {
           playBox.replaceChildren()
-          const line1 = ui.rowbar()
+          if (!document.getElementById('cb-play-style')) {
+            const st = document.createElement('style')
+            st.id = 'cb-play-style'
+            st.textContent = [
+              '.cb-play .cb-btn{padding:5px 10px;border:1px solid rgba(0,0,0,.18);border-radius:7px;background:rgba(255,255,255,.06);color:inherit;font-size:13px;cursor:pointer;line-height:1.4}',
+              '.cb-play .cb-btn:hover:not(:disabled){border-color:#9fc7d8}',
+              '.cb-play .cb-btn:disabled{opacity:.45;cursor:default}',
+              '.cb-play .cb-line{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:6px 0}',
+              '.cb-play .cb-host-note{color:#9a9aa4;font-size:12px;margin:2px 0 0}',
+            ].join('')
+            document.head.append(st)
+          }
+
+          const line = () => {
+            const d = document.createElement('div')
+            d.className = 'cb-line'
+            return d
+          }
+
+          const line1 = line()
           line1.append(
             mkBtn(status.enabled ? t('总开关：开', 'Enabled') : t('总开关：关', 'Disabled'), async () => {
               await ctx.invoke('setEnabled', [!status.enabled])
@@ -105,7 +124,7 @@ export default {
           )
           playBox.append(line1)
 
-          const att = ui.rowbar()
+          const att = line()
           const items = [
             ['strict', t('严谨', 'Strict')],
             ['normal', t('正常', 'Normal')],
@@ -126,24 +145,29 @@ export default {
           }
           playBox.append(att)
 
-          playBox.append(
+          const line2 = line()
+          line2.append(
             mkBtn(status.adult ? t('成人内容：开', 'Adult: on') : t('成人内容：关', 'Adult: off'), async () => {
               await ctx.invoke('setAdult', [!status.adult])
               await refresh()
             }, status.adult),
           )
+          playBox.append(line2)
 
+          const line3 = line()
           const host = mkBtn(t('主持模式（即将推出）', 'Host mode (coming soon)'), () => {}, false)
           host.disabled = true
+          line3.append(host)
+          playBox.append(line3)
+
           const hostNote = document.createElement('div')
-          hostNote.className = 'cb-muted'
+          hostNote.className = 'cb-host-note'
           hostNote.textContent = t(
             '主持模式：让 Coo 自己操作游戏（换装、行动、选选项等），将在不久后加入。',
             'Host mode: let Coo play the game itself. Coming soon.',
           )
-          playBox.append(host, hostNote)
+          playBox.append(hostNote)
         }
-
         const table = ui.table({
           head: [t('词', 'Word'), t('释义', 'Gloss'), t('到期', 'Due'), 'box', t('掌握', 'Mastered')],
           maxHeight: '260px',
