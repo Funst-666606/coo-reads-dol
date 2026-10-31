@@ -32,3 +32,8 @@ Cortico World 扩展：把 **Degrees of Lewdity 英文原版**的场景交给 Co
 | `maxCommentsPerDay` | `0` | 0 = 不限（默认） |
 | `sceneTextLimit` | `4000` | 发给 Coo 的正文字符上限 |
 | `replyTimeoutSec` | `20` | 等 Coo 回传的超时 |
+
+
+## 许可
+
+CC BY-NC-SA 4.0；作者 Funst-666606（QQ：烦伪2674459204）。

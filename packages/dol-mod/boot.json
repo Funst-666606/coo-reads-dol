@@ -1,11 +1,24 @@
 {
   "name": "CooBridge",
-  "version": "0.1.14",
-  "styleFileList": ["CooBridge.css"],
-  "scriptFileList": ["CooBridge.js"],
+  "version": "0.1.15",
+  "nickName": {
+    "zh-CN": "欲都孤鱼与多邻鱼",
+    "zh-TW": "欲都孤魚與多鄰魚",
+    "en": "Coo Reads DoL"
+  },
+  "description": "让 Coo 陪你玩 Degrees of Lewdity：可学英语，也可只陪玩。18+。",
+  "styleFileList": [
+    "CooBridge.css"
+  ],
+  "scriptFileList": [
+    "CooBridge.js"
+  ],
   "tweeFileList": [],
   "imgFileList": [],
-  "additionFile": ["README.md"],
+  "additionFile": [
+    "README.md",
+    "LICENSE"
+  ],
   "dependenceInfo": [],
   "addonPlugin": []
 }

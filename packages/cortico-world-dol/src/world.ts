@@ -29,7 +29,7 @@ import {
 } from './protocol.ts'
 import { DolServer } from './server.ts'
 
-const VERSION = '0.1.11'
+const VERSION = '0.1.12'
 const MODES: readonly DolMode[] = ['proactive', 'trigger', 'passive']
 
 export interface DolWorldDeps {

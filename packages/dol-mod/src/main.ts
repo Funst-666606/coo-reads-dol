@@ -20,7 +20,7 @@ import { loadSettings, saveSettings } from './settings.ts'
 import { applyVocabCommand } from './vocab-commands.ts'
 
 const TAG = '[CooBridge]'
-const CLIENT_VERSION = '0.1.14'
+const CLIENT_VERSION = '0.1.15'
 const SUPPORTED_GAME = '0.5.12.13'
 const PORT_BASE = 17321
 const PORT_COUNT = 10

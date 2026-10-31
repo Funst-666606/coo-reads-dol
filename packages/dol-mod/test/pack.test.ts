@@ -14,7 +14,7 @@ function entries(): Record<string, Uint8Array> {
 test('zip 里有 boot.json / 脚本 / 样式，且都在根目录', { skip: !hasZip && '先跑 node scripts/build-all.mjs' }, () => {
   const files = entries()
   const names = Object.keys(files).sort()
-  assert.deepEqual(names, ['CooBridge.css', 'CooBridge.js', 'boot.json'])
+  assert.deepEqual(names, ['CooBridge.css', 'CooBridge.js', 'LICENSE', 'README.md', 'boot.json'])
   for (const name of names) assert.ok(!name.includes('/'), `${name} 不应带目录前缀`)
 })
 
