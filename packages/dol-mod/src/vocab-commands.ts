@@ -14,6 +14,7 @@ export function applyVocabCommand(book: VocabBook, cmd: VocabCommand): CommandRe
   if (cmd.action === 'add') {
     const gloss = (cmd.gloss ?? '').trim()
     if (!word || !gloss) return null
+    const existing = book.find(lemma)
     const { entry } = book.add({
       word,
       lemma,
@@ -21,15 +22,17 @@ export function applyVocabCommand(book: VocabBook, cmd: VocabCommand): CommandRe
       source: 'coo',
       ...(cmd.sentence ? { sentence: cmd.sentence } : {}),
     })
+    // 已存在时允许 Coo 覆盖释义（这正是「改已有词」的入口）
+    const final = existing ? (book.update(entry.lemma, { gloss, source: 'coo' }) ?? entry) : entry
     return {
       op: 'add',
       entry: {
-        word: entry.word,
-        lemma: entry.lemma,
-        gloss: entry.gloss,
-        dueAt: entry.srs.dueAt,
-        box: entry.srs.box,
-        addedAt: entry.addedAt,
+        word: final.word,
+        lemma: final.lemma,
+        gloss: final.gloss,
+        dueAt: final.srs.dueAt,
+        box: final.srs.box,
+        addedAt: final.addedAt,
       },
     }
   }

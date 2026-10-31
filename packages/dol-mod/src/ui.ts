@@ -23,7 +23,7 @@ export interface UiDeps {
   wordCache: JsonCache<WordPayload>
   askSentence: (text: string) => string | null
   askWord: (word: string, sentence: string) => string | null
-  notifyVocab: (op: 'add' | 'remove' | 'review', entry: Record<string, unknown>) => void
+  notifyVocab: (op: 'add' | 'remove' | 'review' | 'mastered', entry: Record<string, unknown>) => void
   /** 注入朗读实现（测试用）；省略时用系统语音合成。 */
   speak?: (text: string) => void
   settings?: Settings
@@ -45,7 +45,14 @@ interface WordView {
 }
 
 type CardState =
-  | { kind: 'word'; view: WordView; missing?: boolean }
+  | {
+      kind: 'word'
+      word: string
+      sentence: string
+      local: WordView | null
+      coo: WordView | null
+      pending: boolean
+    }
   | { kind: 'sentence'; text: string; payload: SentencePayload | null; status: 'loading' | 'error' | 'ready' }
 
 export class Ui {
@@ -124,18 +131,8 @@ export class Ui {
     const data = payload as WordPayload
     this.deps.wordCache.set(id, data)
     if (this.current?.kind === 'word') {
-      const view: WordView = {
-        word: data.lemma,
-        lemma: data.lemma,
-        gloss: data.gloss,
-        source: data.source,
-        sentence: this.current.view.sentence,
-        ...(data.phonetic ? { phonetic: data.phonetic } : {}),
-        ...(data.pos ? { pos: data.pos } : {}),
-        ...(data.roots ? { roots: data.roots } : {}),
-        ...(data.family ? { family: data.family } : {}),
-      }
-      this.current = { kind: 'word', view }
+      const state = this.current
+      this.current = { ...state, coo: this.viewFromPayload(data, state.word, state.sentence), pending: false }
       this.renderCurrent()
     }
   }
@@ -154,11 +151,7 @@ export class Ui {
       return
     }
 
-    this.current = {
-      kind: 'word',
-      view: { ...this.current.view, gloss: 'Coo 没来得及回答' },
-      missing: true,
-    }
+    this.current = { ...this.current, pending: false }
     this.renderCurrent()
   }
 
@@ -237,54 +230,43 @@ export class Ui {
 
   private openWord(word: string, sentence: string, x: number, y: number): void {
     const hit = lookup(word)
-    if (hit) {
-      const roots = analyzeRoots(hit.lemma)
-      const view: WordView = {
-        word: hit.word,
-        lemma: hit.lemma,
-        gloss: hit.entry.gloss,
-        source: 'local',
-        sentence,
-        ...(hit.entry.phonetic ? { phonetic: hit.entry.phonetic } : {}),
-        ...(hit.entry.pos ? { pos: hit.entry.pos } : {}),
-        ...(roots ? { roots: roots.parts, family: roots.family } : {}),
-      }
-      this.current = { kind: 'word', view }
-      this.renderCurrent()
-      this.positionAt(x, y)
-      return
-    }
+    const local = hit ? this.localView(hit, sentence) : null
 
-    // 本地没收录：先给已有 AI 结果，否则提示问 Coo
     const id = requestId('w', `${word}|${sentence}`)
     const cached = this.deps.wordCache.get(id)
-    if (cached) {
-      this.current = {
-        kind: 'word',
-        view: {
-          word: word,
-          lemma: cached.lemma,
-          gloss: cached.gloss,
-          source: cached.source,
-          sentence,
-          ...(cached.phonetic ? { phonetic: cached.phonetic } : {}),
-          ...(cached.pos ? { pos: cached.pos } : {}),
-          ...(cached.roots ? { roots: cached.roots } : {}),
-          ...(cached.family ? { family: cached.family } : {}),
-        },
-      }
-      this.renderCurrent()
-      this.positionAt(x, y)
-      return
-    }
+    const coo = cached ? this.viewFromPayload(cached, word, sentence) : null
 
-    this.current = {
-      kind: 'word',
-      view: { word, lemma: word, gloss: '', source: 'coo', sentence },
-      missing: true,
-    }
+    this.current = { kind: 'word', word, sentence, local, coo, pending: false }
     this.renderCurrent()
     this.positionAt(x, y)
+  }
+
+  private localView(hit: NonNullable<ReturnType<typeof lookup>>, sentence: string): WordView {
+    const roots = analyzeRoots(hit.lemma)
+    return {
+      word: hit.word,
+      lemma: hit.lemma,
+      gloss: hit.entry.gloss,
+      source: 'local',
+      sentence,
+      ...(hit.entry.phonetic ? { phonetic: hit.entry.phonetic } : {}),
+      ...(hit.entry.pos ? { pos: hit.entry.pos } : {}),
+      ...(roots ? { roots: roots.parts, family: roots.family } : {}),
+    }
+  }
+
+  private viewFromPayload(data: WordPayload, word: string, sentence: string): WordView {
+    return {
+      word,
+      lemma: data.lemma,
+      gloss: data.gloss,
+      source: data.source,
+      sentence,
+      ...(data.phonetic ? { phonetic: data.phonetic } : {}),
+      ...(data.pos ? { pos: data.pos } : {}),
+      ...(data.roots ? { roots: data.roots } : {}),
+      ...(data.family ? { family: data.family } : {}),
+    }
   }
 
   private showSentence(text: string, x: number, y: number): void {
@@ -312,18 +294,17 @@ export class Ui {
   }
 
   private askWord(): void {
-    if (this.current?.kind !== 'word') return
-    const view = this.current.view
-    const id = requestId('w', `${view.word}|${view.sentence}`)
+    const state = this.current
+    if (!state || state.kind !== 'word') return
+    const id = requestId('w', `${state.word}|${state.sentence}`)
     this.pendingId = id
-    const sent = this.deps.askWord(view.word, view.sentence)
+    const sent = this.deps.askWord(state.word, state.sentence)
     if (!sent) {
       this.pendingId = null
-      this.log('查词失败：Coo 未连接')
-      this.setSentenceError()
+      this.toast('Coo 未连接，问不了这个词', true)
       return
     }
-    this.current = { kind: 'word', view: { ...view, gloss: 'Coo 正在想…', source: 'coo' } }
+    this.current = { ...state, pending: true }
     this.renderCurrent()
   }
 
@@ -340,14 +321,29 @@ export class Ui {
     }
   }
 
-  private setSentenceError(): void {
-    if (this.current?.kind !== 'word') return
-    this.current = {
-      kind: 'word',
-      view: { ...this.current.view, gloss: 'Coo 没连上' },
-      missing: true,
-    }
-    this.renderCurrent()
+  /** 单词卡的「本地词典 / Coo 补充」共用一个块。 */
+  private appendWordBlock(view: WordView, label: string): void {
+    this.card.append(row('cb-block-label', label))
+    if (view.phonetic) this.card.append(row('cb-phon', `/${view.phonetic}/`))
+    if (view.pos) this.card.append(row('cb-pos', view.pos))
+    if (view.gloss) this.card.append(row('cb-gloss', view.gloss))
+    if (view.roots?.length) this.card.append(row('cb-roots', formatRoots(view.roots)))
+    else this.card.append(row('cb-roots cb-muted', '无可靠词根'))
+    if (view.family?.length) this.card.append(row('cb-family', `同根：${view.family.join(' / ')}`))
+    this.card.append(row('cb-source', view.source === 'local' ? '来源：本地词典' : '来源：AI 推测（Coo）'))
+  }
+
+  private notifyEntry(op: 'add' | 'remove' | 'review' | 'mastered', entry: VocabEntry): void {
+    this.deps.notifyVocab(op, {
+      word: entry.word,
+      lemma: entry.lemma,
+      gloss: entry.gloss,
+      dueAt: entry.srs.dueAt,
+      box: entry.srs.box,
+      addedAt: entry.addedAt,
+      ...(entry.phonetic ? { phonetic: entry.phonetic } : {}),
+      ...(entry.pos ? { pos: entry.pos } : {}),
+    })
   }
 
   private renderCurrent(): void {
@@ -360,86 +356,94 @@ export class Ui {
     this.card.replaceChildren()
 
     if (state.kind === 'word') {
-      const v = state.view
+      const local = state.local
+      const coo = state.coo
+      const primary = local ?? coo
+      const lemma = primary?.lemma ?? state.word
 
       const head = document.createElement('div')
       head.className = 'cb-word-head'
-      const wordEl = row('cb-word', `${v.word}${v.lemma !== v.word ? ` → ${v.lemma}` : ''}`)
-      const speakBtn = document.createElement('button')
-      speakBtn.type = 'button'
-      speakBtn.className = 'cb-speak'
-      speakBtn.title = '朗读这个单词'
-      speakBtn.setAttribute('aria-label', '朗读')
-      speakBtn.textContent = '🔊'
-      speakBtn.addEventListener('click', (ev) => {
-        ev.preventDefault()
-        ev.stopPropagation()
-        if (this.deps.speak) {
-          this.deps.speak(v.lemma)
-          return
+      const label = primary ? `${primary.word}${primary.lemma !== primary.word ? ` → ${primary.lemma}` : ''}` : state.word
+      head.append(row('cb-word', label))
+
+      if (this.settings.speak) {
+        const speakBtn = document.createElement('button')
+        speakBtn.type = 'button'
+        speakBtn.className = 'cb-speak'
+        speakBtn.title = '朗读这个单词'
+        speakBtn.setAttribute('aria-label', '朗读')
+        speakBtn.textContent = '🔊'
+        speakBtn.addEventListener('click', (ev) => {
+          ev.preventDefault()
+          ev.stopPropagation()
+          if (this.deps.speak) {
+            this.deps.speak(lemma)
+            return
+          }
+          const result = speakWord(lemma, { rate: this.settings.rate })
+          if (result === 'unsupported') this.toast('当前环境不支持朗读（系统没有可用的语音合成）', true)
+        })
+        head.append(speakBtn)
+      }
+      this.card.append(head)
+
+      if (local) this.appendWordBlock(local, '本地词典')
+      if (coo) this.appendWordBlock(coo, 'Coo 补充（AI 推测）')
+      if (state.pending) this.card.append(row('cb-loading', 'Coo 正在想…'))
+      else if (!local && !coo) this.card.append(row('cb-muted', '本地词典未收录'))
+
+      const buttons: HTMLButtonElement[] = []
+
+      const shown = primary
+      if (shown) {
+        const existing = this.deps.book.find(shown.lemma)
+        const addBtn = button(existing ? '已在生词本' : '加入生词本', () => {
+          const { entry } = this.deps.book.add({
+            word: shown.word,
+            lemma: shown.lemma,
+            gloss: shown.gloss,
+            source: shown.source === 'local' ? 'local' : 'coo',
+            sentence: shown.sentence,
+            ...(shown.phonetic ? { phonetic: shown.phonetic } : {}),
+            ...(shown.pos ? { pos: shown.pos } : {}),
+            ...(shown.roots ? { roots: shown.roots } : {}),
+            ...(shown.family ? { family: shown.family } : {}),
+          })
+          this.notifyEntry('add', entry)
+          addBtn.textContent = '已加入'
+          addBtn.disabled = true
+          this.refreshPanel()
+        })
+        if (existing) addBtn.disabled = true
+        buttons.push(addBtn)
+
+        // 本地与 Coo 都有、且已经在生词本里：允许用 Coo 的释义覆盖
+        if (local && coo && existing) {
+          buttons.push(
+            button('用 Coo 的释义更新', () => {
+              const updated = this.deps.book.update(lemma, {
+                gloss: coo.gloss,
+                source: 'coo',
+                ...(coo.phonetic ? { phonetic: coo.phonetic } : {}),
+                ...(coo.pos ? { pos: coo.pos } : {}),
+                ...(coo.roots ? { roots: coo.roots } : {}),
+                ...(coo.family ? { family: coo.family } : {}),
+              })
+              if (updated) {
+                this.notifyEntry('add', updated)
+                this.toast('已用 Coo 的释义更新生词本', false)
+                this.refreshPanel()
+              }
+            }),
+          )
         }
-        const result = speakWord(v.lemma, { rate: this.settings.rate })
-        if (result === 'unsupported') this.toast('当前环境不支持朗读（系统没有可用的语音合成）', true)
-      })
-      head.append(wordEl)
-      if (this.settings.speak) head.append(speakBtn)
+      }
 
-      this.card.append(
-        head,
-        ...(v.phonetic ? [row('cb-phon', `/${v.phonetic}/`)] : []),
-        ...(v.pos ? [row('cb-pos', v.pos)] : []),
-        ...(v.gloss ? [row('cb-gloss', v.gloss)] : []),
+      buttons.push(
+        button(coo ? '再问一次 Coo' : '问 Coo 这个词', () => this.askWord()),
+        button('问 Coo 这句', () => this.showSentence(state.sentence, this.anchor.x, this.anchor.y)),
       )
-
-      if (state.missing) {
-        const btn = button('问 Coo 这个词', () => this.askWord())
-        this.card.append(actions(btn))
-        this.card.append(row('cb-source', '本地词典未收录'))
-        return
-      }
-
-      if (v.roots?.length) {
-        this.card.append(row('cb-roots', formatRoots(v.roots)))
-      } else {
-        this.card.append(row('cb-roots cb-muted', '无可靠词根'))
-      }
-      if (v.family?.length) {
-        this.card.append(row('cb-family', `同根：${v.family.join(' / ')}`))
-      }
-      this.card.append(row('cb-source', v.source === 'local' ? '来源：本地词典' : '来源：AI 推测（Coo）'))
-
-      const added = this.deps.book.find(v.lemma)
-      const addBtn = button(added ? '已在生词本' : '加入生词本', () => {
-        const { entry } = this.deps.book.add({
-          word: v.word,
-          lemma: v.lemma,
-          gloss: v.gloss,
-          source: v.source === 'local' ? 'local' : 'coo',
-          sentence: v.sentence,
-          ...(v.phonetic ? { phonetic: v.phonetic } : {}),
-          ...(v.pos ? { pos: v.pos } : {}),
-          ...(v.roots ? { roots: v.roots } : {}),
-          ...(v.family ? { family: v.family } : {}),
-        })
-        this.deps.notifyVocab('add', {
-          word: entry.word,
-          lemma: entry.lemma,
-          gloss: entry.gloss,
-          dueAt: entry.srs.dueAt,
-          box: entry.srs.box,
-          addedAt: entry.addedAt,
-          ...(entry.phonetic ? { phonetic: entry.phonetic } : {}),
-          ...(entry.pos ? { pos: entry.pos } : {}),
-        })
-        addBtn.textContent = '已加入'
-        addBtn.disabled = true
-        this.refreshPanel()
-      })
-      if (added) addBtn.disabled = true
-      const askBtn = button('问 Coo 这句', () => {
-        this.showSentence(v.sentence, this.anchor.x, this.anchor.y)
-      })
-      this.card.append(actions(addBtn, askBtn))
+      this.card.append(actions(...buttons))
       return
     }
 
@@ -762,19 +766,24 @@ export class Ui {
   }
 
   private openEntry(entry: VocabEntry): void {
+    const view: WordView = {
+      word: entry.word,
+      lemma: entry.lemma,
+      gloss: entry.gloss,
+      source: entry.source,
+      sentence: entry.sentence ?? '',
+      ...(entry.phonetic ? { phonetic: entry.phonetic } : {}),
+      ...(entry.pos ? { pos: entry.pos } : {}),
+      ...(entry.roots ? { roots: entry.roots } : {}),
+      ...(entry.family ? { family: entry.family } : {}),
+    }
     this.current = {
       kind: 'word',
-      view: {
-        word: entry.word,
-        lemma: entry.lemma,
-        gloss: entry.gloss,
-        source: entry.source,
-        sentence: entry.sentence ?? '',
-        ...(entry.phonetic ? { phonetic: entry.phonetic } : {}),
-        ...(entry.pos ? { pos: entry.pos } : {}),
-        ...(entry.roots ? { roots: entry.roots } : {}),
-        ...(entry.family ? { family: entry.family } : {}),
-      },
+      word: entry.word,
+      sentence: entry.sentence ?? '',
+      local: entry.source === 'local' ? view : null,
+      coo: entry.source === 'local' ? null : view,
+      pending: false,
     }
     this.renderCurrent()
     this.positionAt(window.innerWidth / 2 - 160, window.innerHeight / 2 - 120)

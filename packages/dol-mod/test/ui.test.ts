@@ -248,8 +248,47 @@ test('查词失败：回到「问 Coo 这个词」并保留原句', async () => 
   ask.dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true }))
 
   ui.onReplyFailed(requestId('w', `zzzz|${TEXT}`), 'coo_unavailable')
-  assert.match(card.textContent ?? '', /Coo 没来得及回答/)
+  assert.match(card.textContent ?? '', /本地词典未收录/)
   assert.ok([...card.querySelectorAll('button')].some((b) => b.textContent === '问 Coo 这个词'))
+})
+
+test('本地词也能问 Coo，本地与 Coo 内容并存', async () => {
+  const { dom, setCaret } = setupDom()
+  const { Ui } = await import('../src/ui.ts')
+  const kv = memoryKV()
+  const ui = new Ui({
+    book: new VocabBook(kv),
+    sentenceCache: new JsonCache(kv, 'trans.v1'),
+    wordCache: new JsonCache(kv, 'word.v1'),
+    askSentence: () => null,
+    askWord: (word, sentence) => requestId('w', `${word}|${sentence}`),
+    notifyVocab: () => {},
+    connected: () => true,
+    reconnect: () => {},
+  })
+  ui.mount()
+
+  setCaret(TEXT.indexOf('incredible') + 2)
+  dom.window.document.getElementById('p')?.dispatchEvent(
+    new dom.window.MouseEvent('click', { bubbles: true, clientX: 40, clientY: 40 }),
+  )
+  const card = dom.window.document.getElementById('cb-card')
+  assert.ok(card)
+  assert.match(card.textContent ?? '', /难以置信/)
+  assert.match(card.textContent ?? '', /本地词典/)
+
+  const ask = [...card.querySelectorAll('button')].find((b) => b.textContent === '问 Coo 这个词')
+  assert.ok(ask, '本地词也应永远有「问 Coo 这个词」')
+  ask.dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true }))
+
+  ui.onReply(requestId('w', `incredible|${TEXT}`), 'word', {
+    lemma: 'incredible',
+    gloss: '（Coo）不可思议的',
+    source: 'coo',
+  })
+  assert.match(card.textContent ?? '', /难以置信/, '本地释义应保留')
+  assert.match(card.textContent ?? '', /不可思议的/, 'Coo 的释义应同时显示')
+  assert.match(card.textContent ?? '', /Coo 补充/)
 })
 
 test('设置：关掉点词查义后点词不弹卡，勾回来会保存', async () => {

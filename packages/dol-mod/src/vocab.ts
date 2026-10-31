@@ -65,8 +65,33 @@ export class VocabBook {
     return { entry, added: true }
   }
 
-  remove(lemma: string): boolean {
-    const key = lemma.toLowerCase()
+  update(
+    lemma: string,
+    patch: {
+      gloss?: string
+      phonetic?: string
+      pos?: string
+      source?: 'local' | 'coo'
+      roots?: RootPart[]
+      family?: string[]
+    },
+    now = Date.now(),
+  ): VocabEntry | null {
+    const list = this.load()
+    const entry = list.find((e) => e.lemma.toLowerCase() === lemma.toLowerCase())
+    if (!entry) return null
+    if (patch.gloss) entry.gloss = patch.gloss
+    if (patch.phonetic) entry.phonetic = patch.phonetic
+    if (patch.pos) entry.pos = patch.pos
+    if (patch.source) entry.source = patch.source
+    if (patch.roots) entry.roots = patch.roots
+    if (patch.family) entry.family = patch.family
+    entry.lastSeenAt = now
+    this.save(list)
+    return entry
+  }
+
+  remove(lemma: string): boolean {    const key = lemma.toLowerCase()
     const list = this.load()
     const next = list.filter((e) => e.lemma.toLowerCase() !== key)
     if (next.length === list.length) return false

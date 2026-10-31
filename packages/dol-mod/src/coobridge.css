@@ -349,6 +349,18 @@
   overflow-y: auto;
 }
 
+.cb-block-label {
+  margin-top: 10px;
+  color: #9fc7d8;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.cb-block-label:first-of-type {
+  margin-top: 4px;
+}
+
 .cb-word {
   font-size: 20px;
   font-weight: 700;

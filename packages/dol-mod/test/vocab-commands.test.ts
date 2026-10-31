@@ -23,6 +23,16 @@ test('add：需要 word 与 gloss', () => {
   assert.equal(book.list()[0]?.source, 'coo')
 })
 
+test('add：已存在的词会被 Coo 的释义覆盖', () => {
+  const book = new VocabBook(memoryKV())
+  book.add({ word: 'incredible', lemma: 'incredible', gloss: '难以置信的', source: 'local' })
+
+  const result = applyVocabCommand(book, { action: 'add', word: 'incredible', gloss: '（Coo）不可思议的' })
+  assert.equal(result?.op, 'add')
+  assert.equal(book.list()[0]?.gloss, '（Coo）不可思议的')
+  assert.equal(book.list()[0]?.source, 'coo')
+})
+
 test('remove：删掉已有词；没有则返回 null', () => {
   const book = new VocabBook(memoryKV())
   book.add({ word: 'dark', lemma: 'dark', gloss: '黑暗的', source: 'local' })
