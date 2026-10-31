@@ -20,7 +20,7 @@ export const DOL_DEFAULTS: DolConfig = {
   enabled: false,
   port: 17321,
   mode: 'trigger',
-  maxCommentsPerDay: 40,
+  maxCommentsPerDay: 0,
   sceneTextLimit: 4000,
   replyTimeoutSec: 20,
 }

@@ -29,6 +29,6 @@ Cortico World 扩展：把 **Degrees of Lewdity 英文原版**的场景交给 Co
 | `enabled` | `false` | 在 World 页手动启用 |
 | `port` | `17321` | 本地端口 |
 | `mode` | `trigger` | 主动 / 触发 / 被动 |
-| `maxCommentsPerDay` | `40` | 0 = 不限 |
+| `maxCommentsPerDay` | `0` | 0 = 不限（默认） |
 | `sceneTextLimit` | `4000` | 发给 Coo 的正文字符上限 |
 | `replyTimeoutSec` | `20` | 等 Coo 回传的超时 |
