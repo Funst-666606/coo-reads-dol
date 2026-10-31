@@ -126,14 +126,23 @@ export default {
           playBox.append(line1)
 
           const att = line()
-          const items = [
-            ['strict', t('严谨', 'Strict')],
-            ['normal', t('正常', 'Normal')],
-            ['subtle', t('含蓄', 'Subtle')],
-            ['erotic', t('色情', 'Erotic')],
-            ['lewd', t('淫乱', 'Lewd')],
-          ]
+          const items = status.sfw
+            ? [['strict', t('严谨', 'Strict')]]
+            : [
+                ['strict', t('严谨', 'Strict')],
+                ['normal', t('正常', 'Normal')],
+                ['subtle', t('含蓄', 'Subtle')],
+                ['erotic', t('色情', 'Erotic')],
+                ['lewd', t('淫乱', 'Lewd')],
+              ]
           for (const [value, label] of items) {
+            if (status.sfw) {
+              const b = mkBtn(label, () => {}, value === 'strict')
+              b.disabled = true
+              b.title = t('学习版锁定为严谨', 'Locked to strict in the learning build')
+              att.append(b)
+              continue
+            }
             const locked = (value === 'erotic' || value === 'lewd') && !status.adult
             const b = mkBtn(label, async () => {
               if (locked) return
@@ -144,16 +153,44 @@ export default {
             b.title = locked ? t('先打开成人内容', 'Enable adult content first') : ''
             att.append(b)
           }
+          if (status.sfw) {
+            for (const label of [t('正常', 'Normal'), t('含蓄', 'Subtle')]) {
+              const b = mkBtn(label, () => {}, false)
+              b.disabled = true
+              b.style.textDecoration = 'line-through'
+              b.style.opacity = '0.4'
+              att.append(b)
+            }
+          }
           playBox.append(att)
 
           const line2 = line()
-          line2.append(
-            mkBtn(status.adult ? t('成人内容：开', 'Adult: on') : t('成人内容：关', 'Adult: off'), async () => {
-              await ctx.invoke('setAdult', [!status.adult])
-              await refresh()
-            }, status.adult),
-          )
+          if (status.sfw) {
+            const dev = mkBtn(t('开发者模式', 'Developer mode'), () => {}, false)
+            dev.disabled = true
+            dev.style.textDecoration = 'line-through'
+            dev.style.opacity = '0.4'
+            dev.title = t('学习版暂未开放', 'Not available in the learning build')
+            line2.append(dev)
+          } else {
+            line2.append(
+              mkBtn(status.adult ? t('成人内容：开', 'Adult: on') : t('成人内容：关', 'Adult: off'), async () => {
+                await ctx.invoke('setAdult', [!status.adult])
+                await refresh()
+              }, status.adult),
+            )
+          }
           playBox.append(line2)
+
+          if (status.sfw) {
+            const note = document.createElement('div')
+            note.className = 'cb-host-note'
+            note.textContent = t(
+              '学习版说明：评论态度锁定「严谨」，只做语言与剧情的中性说明，不生成性内容；成人内容与开发者模式暂未开放。',
+              'Learning build: comments are locked to Strict and stay non-sexual. Adult content and developer mode are unavailable.',
+            )
+            playBox.append(note)
+          }
 
           const line3 = line()
           const host = mkBtn(t('主持模式（即将推出）', 'Host mode (coming soon)'), () => {}, false)

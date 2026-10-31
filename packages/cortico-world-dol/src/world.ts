@@ -28,6 +28,7 @@ import {
   type WordPayload,
 } from './protocol.ts'
 import { DolServer } from './server.ts'
+import { SFW } from './variant.ts'
 
 const VERSION = '0.1.14'
 const MODES: readonly DolMode[] = ['proactive', 'trigger', 'passive']
@@ -111,6 +112,9 @@ export class DolWorld implements World {
       port: String(this.server?.actualPort ?? cfg.port),
       learning: cfg.learning ? 'yes' : 'no',
       onboarded: cfg.onboarded ? 'yes' : 'no',
+      variant_note: SFW
+        ? '本版本是学习版：评论态度锁定「严谨」，不生成性内容；成人内容与开发者模式未开放。'
+        : '完整版：成人内容与更多态度档位可在设置中开启。',
       attitude: ATTITUDE_LABELS[attitude],
       attitude_rule: ATTITUDE_RULES[attitude],
     }
@@ -252,6 +256,7 @@ export class DolWorld implements World {
         return this.statusSnapshot()
       }
       case 'setAttitude': {
+        if (SFW) return this.statusSnapshot()
         const attitude = typeof args[0] === 'string' ? args[0] : ''
         if (!ATTITUDES.includes(attitude as DolAttitude)) throw new Error(`未知态度 ${attitude}`)
         this.deps.cfg.attitude = attitude as DolAttitude
@@ -260,6 +265,7 @@ export class DolWorld implements World {
         return this.statusSnapshot()
       }
       case 'setAdult': {
+        if (SFW) return this.statusSnapshot()
         const adult = args[0] === true
         this.deps.cfg.adult = adult
         this.deps.persist({ adult })
@@ -314,6 +320,7 @@ export class DolWorld implements World {
       learning: this.deps.cfg.learning,
       attitude: this.deps.cfg.attitude,
       effectiveAttitude: effectiveAttitude(this.deps.cfg),
+      sfw: SFW,
       adult: this.deps.cfg.adult,
       onboarded: this.deps.cfg.onboarded,
       todayComments: this.commentsToday,

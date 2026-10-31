@@ -1,5 +1,7 @@
 /** World 配置段：worlds.dol.* */
 
+import { SFW } from './variant.ts'
+
 export type DolMode = 'proactive' | 'trigger' | 'passive'
 export type DolAttitude = 'strict' | 'normal' | 'subtle' | 'erotic' | 'lewd'
 
@@ -30,7 +32,7 @@ export interface DolConfig {
 export const DOL_DEFAULTS: DolConfig = {
   enabled: false,
   learning: true,
-  attitude: 'normal',
+  attitude: SFW ? 'strict' : 'normal',
   adult: false,
   onboarded: false,
   onboardingVersion: 1,
@@ -53,6 +55,7 @@ export const ATTITUDE_LABELS: Record<DolAttitude, string> = {
 
 /** 成人开关关闭时，把过火的档位降级。 */
 export function effectiveAttitude(cfg: DolConfig): DolAttitude {
+  if (SFW) return 'strict'
   if (!cfg.adult && (cfg.attitude === 'erotic' || cfg.attitude === 'lewd')) return 'subtle'
   return cfg.attitude
 }
