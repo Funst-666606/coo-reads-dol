@@ -20,15 +20,21 @@ if errorlevel 1 (
 
 if not defined NPM_TOKEN (
   echo.
-  echo npm Automation token required.
-  echo Get one at: npmjs.com -^> Access Tokens -^> Automation
-  echo Paste the token and press Enter ^(input is visible^):
+  echo Option A: paste an npm Automation token below and press Enter.
+  echo Option B: leave it empty and press Enter, then use "npm login" first.
   set /p NPM_TOKEN=
 )
+
 if not defined NPM_TOKEN (
-  echo [ERROR] NPM_TOKEN is empty. Cancelled.
-  pause
-  exit /b 1
+  echo.
+  echo No token. Will use the account from "npm login".
+  echo If you have not logged in yet, cancel and run: npm login
+  choice /C YN /M "Continue with npm login"
+  if errorlevel 2 (
+    echo Cancelled.
+    pause
+    exit /b 0
+  )
 )
 
 echo.
@@ -49,6 +55,7 @@ set "CODE=%ERRORLEVEL%"
 echo.
 if not "%CODE%"=="0" (
   echo [FAILED] Publish did not finish. Exit code: %CODE%
+  echo If it says "npm login", run: npm login
 ) else (
   echo [DONE] SFW publish flow finished.
 )
