@@ -29,6 +29,9 @@ export interface UiDeps {
   speak?: (text: string) => void
   settings?: Settings
   saveSettings?: (settings: Settings) => void
+  /** 学习英语模式；false = 只陪玩。 */
+  learning?: boolean
+  setLearning?: (learning: boolean) => void
   connected: () => boolean
   reconnect: () => void
 }
@@ -59,6 +62,7 @@ type CardState =
 export class Ui {
   private readonly deps: UiDeps
   private settings: Settings
+  private learning: boolean
   private readonly logLines: string[] = []
 
   private badge!: HTMLButtonElement
@@ -73,6 +77,7 @@ export class Ui {
   constructor(deps: UiDeps) {
     this.deps = deps
     this.settings = deps.settings ?? { ...DEFAULT_SETTINGS }
+    this.learning = deps.learning ?? true
   }
 
   mount(): void {
@@ -170,6 +175,7 @@ export class Ui {
         if (!target) return
         // 本模组自己的浮层、以及游戏里的链接/按钮/输入框都不处理
         if (isOwnUi(target) || isInteractive(target)) return
+        if (!this.learning) return
         if (e.altKey) {
           if (this.settings.altSentence) this.openSentenceAt(e.clientX, e.clientY)
           return
@@ -186,6 +192,7 @@ export class Ui {
     document.addEventListener('mouseup', (ev) => {
       try {
         const e = ev as MouseEvent
+        if (!this.learning) return
         if (e.altKey) return
         if (!this.settings.altSentence) return
         const sel = window.getSelection()
@@ -788,6 +795,12 @@ export class Ui {
     return lines.join('\n')
   }
 
+  /** World 或设置切换学习模式；非学习模式下点词/点句全部失效。 */
+  setLearning(learning: boolean): void {
+    this.learning = learning
+    this.refreshPanel()
+  }
+
   /** 外部（例如 Coo 改了词库）后刷新面板。 */
   refresh(): void {
     this.refreshPanel()
@@ -816,6 +829,21 @@ export class Ui {
       line.append(input, text)
       wrap.append(line)
     }
+
+    const learnLine = document.createElement('label')
+    learnLine.className = 'cb-setting'
+    const learnInput = document.createElement('input')
+    learnInput.type = 'checkbox'
+    learnInput.checked = this.learning
+    learnInput.addEventListener('change', () => {
+      this.learning = learnInput.checked
+      this.deps.setLearning?.(learnInput.checked)
+      this.refreshPanel()
+    })
+    const learnText = document.createElement('span')
+    learnText.textContent = '学习英语模式（关闭 = 只陪玩）'
+    learnLine.append(learnInput, learnText)
+    wrap.append(learnLine)
 
     toggle('点词查义', 'wordCard')
     toggle('Alt+点击 / 选中问句', 'altSentence')

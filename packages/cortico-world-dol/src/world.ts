@@ -8,7 +8,15 @@ import type { Language } from 'cortico/core/language.ts'
 import { fileURLToPath } from 'node:url'
 import { join } from 'node:path'
 import { VocabMirror } from './mirror.ts'
-import type { DolConfig, DolMode } from './config.ts'
+import {
+  ATTITUDE_LABELS,
+  ATTITUDE_RULES,
+  ATTITUDES,
+  effectiveAttitude,
+  type DolAttitude,
+  type DolConfig,
+  type DolMode,
+} from './config.ts'
 import {
   type ChoiceMsg,
   type RootPart,
@@ -21,7 +29,7 @@ import {
 } from './protocol.ts'
 import { DolServer } from './server.ts'
 
-const VERSION = '0.1.5'
+const VERSION = '0.1.6'
 const MODES: readonly DolMode[] = ['proactive', 'trigger', 'passive']
 
 export interface DolWorldDeps {
@@ -70,6 +78,11 @@ export class DolWorld implements World {
       onWordAsk: (m) => this.onWordAsk(m),
       onVocab: (m) => this.onVocab(m),
       onConnection: (connected) => this.onConnection(connected),
+      onLearning: (learning) => {
+        this.deps.cfg.learning = learning
+        this.deps.persist({ learning, onboarded: true })
+        this.pushConfig()
+      },
     })
     await this.server.start()
     host.log.info('dol: World 已启动', { port: this.server.actualPort, mode: cfg.mode })
@@ -84,10 +97,15 @@ export class DolWorld implements World {
   }
 
   envPromptVars(): Record<string, string> {
+    const cfg = this.deps.cfg
+    const attitude = effectiveAttitude(cfg)
     return {
-      mode: this.deps.cfg.mode,
+      mode: cfg.mode,
       connected: this.server?.connected ? 'yes' : 'no',
-      port: String(this.server?.actualPort ?? this.deps.cfg.port),
+      port: String(this.server?.actualPort ?? cfg.port),
+      learning: cfg.learning ? 'yes' : 'no',
+      attitude: ATTITUDE_LABELS[attitude],
+      attitude_rule: ATTITUDE_RULES[attitude],
     }
   }
 
@@ -95,7 +113,7 @@ export class DolWorld implements World {
     const zh = language !== 'en'
     const status = this.server?.status()
     return {
-      label: zh ? 'DoL 陪读' : 'DoL tutor',
+      label: zh ? '欲都孤鱼与多邻鱼' : 'Coo companion',
       lamps: [
         {
           label: zh ? '游戏连接' : 'Game link',
@@ -106,7 +124,7 @@ export class DolWorld implements World {
       promptDocs: [
         {
           key: 'worlds.dol.env',
-          title: zh ? 'DoL 陪读环境提示' : 'DoL tutor environment',
+          title: zh ? '欲都孤鱼与多邻鱼环境提示' : 'DoL tutor environment',
           description: zh
             ? '告诉 Coo 怎么读 DoL 的事件、怎么回答查词与问句'
             : 'How Coo reads DoL events and answers lookups',
@@ -128,7 +146,7 @@ export class DolWorld implements World {
           owner: 'world:dol',
           schema: {
             type: 'object',
-            title: zh ? 'DoL 陪读' : 'DoL tutor',
+            title: zh ? '欲都孤鱼与多邻鱼' : 'Coo companion',
             description: zh
               ? '端口改动需要重启 World；其余立即生效。'
               : 'Port changes need a World restart; the rest apply immediately.',
@@ -142,6 +160,31 @@ export class DolWorld implements World {
                 minimum: 1024,
                 maximum: 65535,
                 'x-hot': false,
+              },
+              'worlds.dol.enabled': {
+                type: 'boolean',
+                title: zh ? '启用陪玩' : 'Enabled',
+                description: zh ? '总开关；关闭后不评论、不响应游戏事件。' : 'Master switch.',
+                'x-hot': true,
+              },
+              'worlds.dol.learning': {
+                type: 'boolean',
+                title: zh ? '学习英语模式' : 'Learning mode',
+                description: zh ? '关闭 = 只陪玩，不查词/翻译/生词。' : 'Off = companion only.',
+                'x-hot': true,
+              },
+              'worlds.dol.attitude': {
+                type: 'string',
+                enum: ['strict', 'normal', 'subtle', 'erotic', 'lewd'],
+                title: zh ? '评论态度' : 'Comment attitude',
+                description: zh ? '严谨 / 正常 / 含蓄 / 色情 / 淫乱（后两档需开成人内容）' : 'strict / normal / subtle / erotic / lewd',
+                'x-hot': true,
+              },
+              'worlds.dol.adult': {
+                type: 'boolean',
+                title: zh ? '成人内容' : 'Adult content',
+                description: zh ? '开启后才可用「色情 / 淫乱」两档。' : 'Required for erotic/lewd.',
+                'x-hot': true,
               },
               'worlds.dol.mode': {
                 type: 'string',
@@ -194,6 +237,43 @@ export class DolWorld implements World {
         return this.statusSnapshot()
       case 'vocab':
         return this.mirror?.list() ?? []
+      case 'setLearning': {
+        const learning = args[0] === true
+        this.deps.cfg.learning = learning
+        this.deps.persist({ learning })
+        this.pushConfig()
+        return this.statusSnapshot()
+      }
+      case 'setAttitude': {
+        const attitude = typeof args[0] === 'string' ? args[0] : ''
+        if (!ATTITUDES.includes(attitude as DolAttitude)) throw new Error(`未知态度 ${attitude}`)
+        this.deps.cfg.attitude = attitude as DolAttitude
+        this.deps.persist({ attitude: attitude as DolAttitude })
+        this.pushConfig()
+        return this.statusSnapshot()
+      }
+      case 'setAdult': {
+        const adult = args[0] === true
+        this.deps.cfg.adult = adult
+        this.deps.persist({ adult })
+        this.pushConfig()
+        return this.statusSnapshot()
+      }
+      case 'setEnabled': {
+        const enabled = args[0] === true
+        this.deps.cfg.enabled = enabled
+        this.deps.persist({ enabled })
+        this.pushConfig()
+        return this.statusSnapshot()
+      }
+      case 'completeOnboarding': {
+        const learning = args[0] === true
+        this.deps.cfg.learning = learning
+        this.deps.cfg.onboarded = true
+        this.deps.persist({ learning, onboarded: true })
+        this.pushConfig()
+        return this.statusSnapshot()
+      }
       case 'setMode': {
         const mode = typeof args[0] === 'string' ? args[0] : ''
         if (!MODES.includes(mode as DolMode)) throw new Error(`未知模式 ${mode}`)
@@ -201,6 +281,9 @@ export class DolWorld implements World {
         this.deps.persist({ mode: mode as DolMode })
         return this.statusSnapshot()
       }
+      case 'pushConfig':
+        this.pushConfig()
+        return this.statusSnapshot()
       case 'exportCsv':
         return this.mirror?.toCsv() ?? ''
       case 'exportJson':
@@ -220,6 +303,12 @@ export class DolWorld implements World {
       passage: scene?.passage ?? null,
       day: scene?.state.day ?? null,
       location: scene?.state.location ?? null,
+      enabled: this.deps.cfg.enabled,
+      learning: this.deps.cfg.learning,
+      attitude: this.deps.cfg.attitude,
+      effectiveAttitude: effectiveAttitude(this.deps.cfg),
+      adult: this.deps.cfg.adult,
+      onboarded: this.deps.cfg.onboarded,
       todayComments: this.commentsToday,
       commentCap: this.deps.cfg.maxCommentsPerDay,
       vocab: this.mirror?.stats() ?? { total: 0, due: 0 },
@@ -389,7 +478,18 @@ export class DolWorld implements World {
 
   // ── 来自游戏的事件 ──────────────────────────────────────────────────────
 
+  private pushConfig(): void {
+    this.server?.sendConfig({
+      type: 'config',
+      enabled: this.deps.cfg.enabled,
+      learning: this.deps.cfg.learning,
+      attitude: effectiveAttitude(this.deps.cfg),
+      adult: this.deps.cfg.adult,
+    })
+  }
+
   private onConnection(connected: boolean): void {
+    if (connected) this.pushConfig()
     // 断线重连抖动时别刷屏：30 秒内只报一次连接状态变化。
     const now = Date.now()
     if (now - this.lastConnEventAt < 30_000) return

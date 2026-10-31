@@ -10,8 +10,8 @@ test('空存储返回默认值', () => {
 
 test('保存后可读回', () => {
   const kv = memoryKV()
-  saveSettings(kv, { speak: false, rate: 1.1, wordCard: false, altSentence: true, port: 17321 })
-  assert.deepEqual(loadSettings(kv), { speak: false, rate: 1.1, wordCard: false, altSentence: true, port: 17321 })
+  saveSettings(kv, { speak: false, rate: 1.1, wordCard: false, altSentence: true, port: 17321, learning: true })
+  assert.deepEqual(loadSettings(kv), { speak: false, rate: 1.1, wordCard: false, altSentence: true, port: 17321, learning: true })
 })
 
 test('端口：合法值保留，非法值回到 null', () => {

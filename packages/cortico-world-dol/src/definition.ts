@@ -1,5 +1,5 @@
 import type { WorldDefinition } from 'cortico/world.ts'
-import { DOL_DEFAULTS, type DolConfig, type DolMode } from './config.ts'
+import { ATTITUDES, DOL_DEFAULTS, type DolConfig, type DolMode } from './config.ts'
 import { describeTools } from './describe.ts'
 import { DOL_EVENTS, DOL_TOOL_DECLS, DolWorld } from './world.ts'
 
@@ -7,12 +7,15 @@ const MODES: readonly DolMode[] = ['proactive', 'trigger', 'passive']
 
 export const DOL: WorldDefinition<DolConfig> = {
   id: 'dol',
-  label: 'DoL 陪读',
+  label: '欲都孤鱼与多邻鱼',
   defaults: () => ({ ...DOL_DEFAULTS }),
   preflight: (ctx) => {
     const cfg = ctx.cfg
     if (!Number.isInteger(cfg.port) || cfg.port < 1 || cfg.port > 65535) {
       throw new Error('worlds.dol.port 要是 1–65535 的整数')
+    }
+    if (!ATTITUDES.includes(cfg.attitude)) {
+      throw new Error(`worlds.dol.attitude 只能是 ${ATTITUDES.join(' / ')}`)
     }
     if (!MODES.includes(cfg.mode)) {
       throw new Error(`worlds.dol.mode 只能是 ${MODES.join(' / ')}`)

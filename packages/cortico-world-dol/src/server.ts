@@ -15,6 +15,7 @@ import {
   type SceneMsg,
   type SentenceMsg,
   type SentencePayload,
+  type ConfigMsg,
   type VocabMsg,
   type VocabCommand,
   type WordMsg,
@@ -37,6 +38,7 @@ export interface DolServerOptions {
   onWordAsk(m: WordMsg): void
   onVocab(m: VocabMsg): void
   onConnection(connected: boolean): void
+  onLearning?(learning: boolean): void
 }
 
 interface Pending {
@@ -128,6 +130,14 @@ export class DolServer {
 
   notify(level: 'info' | 'warn' | 'error', text: string): void {
     this.send({ type: 'notice', level, text })
+  }
+
+  /** 把模式/态度同步给游戏，游戏端据此隐藏或显示教学界面。 */
+  sendConfig(msg: ConfigMsg): boolean {
+    const ws = this.socket
+    if (!ws || ws.readyState !== OPEN) return false
+    this.send(msg)
+    return true
   }
 
   /** 让游戏改本地词库。游戏没连上时返回 false。 */
@@ -253,6 +263,9 @@ export class DolServer {
       case 'word':
         this.track(msg.id, 'word')
         this.opts.onWordAsk(msg)
+        return
+      case 'command':
+        if (msg.command === 'learning') this.opts.onLearning?.(msg.payload.learning)
         return
       case 'vocab':
         this.opts.onVocab(msg)

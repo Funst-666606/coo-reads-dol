@@ -1,4 +1,4 @@
-# coo-reads-dol · DoL 陪读
+# 欲都孤鱼与多邻鱼
 
 让 Coo 坐在屏幕边陪你玩 **DoL 英文原版**，并在游戏里加一层可以随时开关的英语精读层：
 读英文 → 点词看释义与词根 → 点句让 Coo 翻译讲解 → 进生词本 → 按间隔复习。
@@ -29,7 +29,7 @@
 - **设置**页可开关：点词查义、Alt+点击问句、单词朗读；朗读语速 0.6–1.3 可调（存在游戏本地）。
 - 也可以直接对 Coo 说「把这个词加进生词本 / 删掉 / 我记住了」——它通过 `dol_vocab_edit` 改游戏内的词库。
 - 模式（主动/触发/被动）在 Coopanion 的 World 设置里改；World 面板也能切。
-- Coopanion 的「DoL 陪读 → 陪读」页：连接状态、端口、当前场景、今日评论数、生词镜像与导出。
+- Coopanion 的「欲都孤鱼与多邻鱼 → 陪读」页：连接状态、端口、当前场景、今日评论数、生词镜像与导出。
 
 ## 两个包
 
@@ -86,7 +86,7 @@ node scripts/package-release.mjs
 ## 手工联调（第一次）
 
 1. **装 World**：Coopanion → World extensions → 手动安装 → 从本机目录安装 → 选
-   `packages/cortico-world-dol` → 重启 Coopanion → 在 World 总览里启用「DoL 陪读」。
+   `packages/cortico-world-dol` → 重启 Coopanion → 在 World 总览里启用「欲都孤鱼与多邻鱼」。
 2. **装模组**：打开游戏（英文原版，**不要**装汉化包）→ 左下角 Mod 管理器 → 添加旁加载 Mod →
    选 `packages/dol-mod/CooBridge.mod.zip` → 重新载入。
 3. **按清单逐项打勾**：[联调验收](docs/联调验收.md)。出问题取「设置 → 复制自检」发我。

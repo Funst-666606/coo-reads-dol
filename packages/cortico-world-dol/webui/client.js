@@ -69,6 +69,98 @@ export default {
           ]),
         )
 
+
+        const playBox = document.createElement('div')
+        const playSection = ui.section(t('玩法与态度', 'Play & attitude'))
+        sheet.body.append(playSection, playBox)
+
+        const mkBtn = (label, onClick, active) => {
+          const b = document.createElement('button')
+          b.type = 'button'
+          b.className = 'cb-btn'
+          b.textContent = label
+          if (active) {
+            b.style.borderColor = '#9fc7d8'
+            b.style.color = '#9fc7d8'
+          }
+          b.addEventListener('click', (ev) => {
+            ev.preventDefault()
+            onClick()
+          })
+          return b
+        }
+
+        function renderPlay(status) {
+          playBox.replaceChildren()
+          const line1 = ui.rowbar()
+          line1.append(
+            mkBtn(status.enabled ? t('总开关：开', 'Enabled') : t('总开关：关', 'Disabled'), async () => {
+              await ctx.invoke('setEnabled', [!status.enabled])
+              await refresh()
+            }, status.enabled),
+            mkBtn(status.learning ? t('学习英语', 'Learning') : t('只陪玩', 'Companion'), async () => {
+              await ctx.invoke('setLearning', [!status.learning])
+              await refresh()
+            }, status.learning),
+          )
+          playBox.append(line1)
+
+          const att = ui.rowbar()
+          const items = [
+            ['strict', t('严谨', 'Strict')],
+            ['normal', t('正常', 'Normal')],
+            ['subtle', t('含蓄', 'Subtle')],
+            ['erotic', t('色情', 'Erotic')],
+            ['lewd', t('淫乱', 'Lewd')],
+          ]
+          for (const [value, label] of items) {
+            const locked = (value === 'erotic' || value === 'lewd') && !status.adult
+            const b = mkBtn(label, async () => {
+              if (locked) return
+              await ctx.invoke('setAttitude', [value])
+              await refresh()
+            }, status.effectiveAttitude === value)
+            b.disabled = locked
+            b.title = locked ? t('先打开成人内容', 'Enable adult content first') : ''
+            att.append(b)
+          }
+          playBox.append(att)
+
+          playBox.append(
+            mkBtn(status.adult ? t('成人内容：开', 'Adult: on') : t('成人内容：关', 'Adult: off'), async () => {
+              await ctx.invoke('setAdult', [!status.adult])
+              await refresh()
+            }, status.adult),
+          )
+        }
+
+        let onboarded = false
+        function showOnboard() {
+          if (onboarded) return
+          onboarded = true
+          const ov = document.createElement('div')
+          ov.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.55)'
+          const card = document.createElement('div')
+          card.style.cssText = 'max-width:360px;padding:20px;border-radius:14px;background:#1d1d22;color:#eee;border:1px solid #3a3a44;text-align:center'
+          card.innerHTML = '<h3 style="margin:0 0 8px">欲都孤鱼与多邻鱼</h3><p style="margin:0 0 14px;color:#bbb">要陪你学英语，还是只想一起玩？</p>'
+          const row = document.createElement('div')
+          row.style.cssText = 'display:flex;gap:8px;justify-content:center'
+          const learn = mkBtn(t('学英语', 'Learn English'), async () => {
+            await ctx.invoke('completeOnboarding', [true])
+            ov.remove()
+            await refresh()
+          })
+          const play = mkBtn(t('只想玩', 'Just play'), async () => {
+            await ctx.invoke('completeOnboarding', [false])
+            ov.remove()
+            await refresh()
+          })
+          row.append(learn, play)
+          card.append(row)
+          ov.append(card)
+          document.body.append(ov)
+        }
+
         const table = ui.table({
           head: [t('词', 'Word'), t('释义', 'Gloss'), t('到期', 'Due'), 'box', t('掌握', 'Mastered')],
           maxHeight: '260px',
@@ -109,6 +201,8 @@ export default {
               : t('还没收到场景', 'no scene yet')
             commentsText.textContent = `${status.todayComments}${status.commentCap > 0 ? ` / ${status.commentCap}` : ''}`
             vocabText.textContent = `${status.vocab.total}${t(' 词', '')} · ${status.vocab.due}${t(' 到期', ' due')}`
+            renderPlay(status)
+            if (!status.onboarded) showOnboard()
             seg.setValue(status.mode)
             const current = MODES.find((m) => m.value === status.mode)
             modeNote.textContent = t(`当前：${current?.label ?? status.mode}`, `current: ${status.mode}`)

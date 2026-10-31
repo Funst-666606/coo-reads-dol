@@ -20,7 +20,7 @@ import { loadSettings, saveSettings } from './settings.ts'
 import { applyVocabCommand } from './vocab-commands.ts'
 
 const TAG = '[CooBridge]'
-const CLIENT_VERSION = '0.1.10'
+const CLIENT_VERSION = '0.1.11'
 const SUPPORTED_GAME = '0.5.12.13'
 const PORT_BASE = 17321
 const PORT_COUNT = 10
@@ -85,6 +85,7 @@ function boot(): void {
         onReplyFailed: (id, code) => ui.onReplyFailed(id, code),
         onNotice: (level, text) => ui.toast(text, level === 'error'),
         onError: (code, message) => ui.toast(errorText(code, message), true),
+        onConfig: (cfg) => ui.setLearning(cfg.enabled && cfg.learning),
         onCommand: (cmd) => {
           const result = applyVocabCommand(book, cmd)
           if (!result) return
@@ -198,6 +199,7 @@ interface BridgeHooks {
   onNotice?(level: 'info' | 'warn' | 'error', text: string): void
   onError?(code: string, message: string): void
   onCommand?(cmd: VocabCommand): void
+  onConfig?(cfg: { enabled: boolean; learning: boolean; attitude: string; adult: boolean }): void
 }
 
 class Bridge {
@@ -263,6 +265,12 @@ class Bridge {
     this.pending.set(id, 'word')
     this.send({ type: 'word', id, word, sentence })
     return id
+  }
+
+  /** 让 World 切换学习/非学习模式。 */
+  setLearning(learning: boolean): void {
+    if (!this.isConnected()) return
+    this.send({ type: 'command', command: 'learning', payload: { learning } })
   }
 
   sendVocab(op: 'add' | 'remove' | 'review' | 'mastered', entry: Record<string, unknown>): void {
@@ -420,6 +428,21 @@ class Bridge {
 }
 
 // ── 汉化拦截提示 ──────────────────────────────────────────────────────────
+
+function showCompanionBanner(message: string): void {
+  console.warn(`${TAG} 检测到中文本地化，切换为非学习模式：${message}`)
+  document.getElementById('cb-fatal')?.remove()
+  const banner = document.createElement('div')
+  banner.id = 'cb-fatal'
+  banner.innerHTML = `<div class="cb-fatal-box">
+    <h2>已切换为非学习模式</h2>
+    <p>${escapeHtml(message)}</p>
+    <p class="cb-fatal-hint">想继续学英语：圆点 → 设置 → 打开「学习英语模式」；本次运行有效。</p>
+    <button type="button" class="cb-fatal-close">知道了</button>
+  </div>`
+  banner.querySelector('.cb-fatal-close')?.addEventListener('click', () => banner.remove())
+  document.body.appendChild(banner)
+}
 
 function showFatal(message: string): void {
   console.error(`${TAG} ${message}`)

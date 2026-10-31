@@ -107,9 +107,23 @@ export interface VocabCommand {
   mastered?: boolean
 }
 
+export interface ConfigMsg {
+  type: 'config'
+  enabled: boolean
+  learning: boolean
+  attitude: string
+  adult: boolean
+}
+
+export interface LearningCommandMsg {
+  type: 'command'
+  command: 'learning'
+  payload: { learning: boolean }
+}
+
 export interface CommandMsg {
   type: 'command'
-  command: 'vocab'
+  command: 'vocab' | 'learning'
   payload: VocabCommand
 }
 
@@ -118,6 +132,7 @@ export interface PingMsg {
 }
 
 export type ModMessage =
+  | LearningCommandMsg
   | HelloMsg
   | SceneMsg
   | ChoiceMsg
@@ -177,7 +192,7 @@ export interface PongMsg {
   type: 'pong'
 }
 
-export type WorldMessage = HelloOkMsg | ReplyMsg | NoticeMsg | ErrorMsg | PongMsg | CommandMsg
+export type WorldMessage = HelloOkMsg | ReplyMsg | NoticeMsg | ErrorMsg | PongMsg | CommandMsg | ConfigMsg
 
 // ── 解析 ──────────────────────────────────────────────────────────────────
 
@@ -244,6 +259,12 @@ export function decodeModMessage(raw: unknown): ModMessage | null {
     case 'word':
       if (typeof raw['id'] !== 'string' || typeof raw['word'] !== 'string' || typeof raw['sentence'] !== 'string') return null
       return { type: 'word', id: raw['id'], word: raw['word'], sentence: raw['sentence'] }
+    case 'command': {
+      if (raw['command'] !== 'learning') return null
+      const payload = raw['payload']
+      if (!isRecord(payload) || typeof payload['learning'] !== 'boolean') return null
+      return { type: 'command', command: 'learning', payload: { learning: payload['learning'] } }
+    }
     case 'vocab': {
       const op = raw['op']
       if (op !== 'add' && op !== 'remove' && op !== 'review' && op !== 'mastered') return null
@@ -257,7 +278,7 @@ export function decodeModMessage(raw: unknown): ModMessage | null {
   }
 }
 
-const WORLD_TYPES = new Set<string>(['hello_ok', 'reply', 'notice', 'error', 'pong', 'command'])
+const WORLD_TYPES = new Set<string>(['hello_ok', 'reply', 'notice', 'error', 'pong', 'command', 'config'])
 
 /** 接收方的形状校验：World 侧发来的消息。 */
 export function decodeWorldMessage(raw: unknown): WorldMessage | null {
@@ -308,6 +329,15 @@ export function decodeWorldMessage(raw: unknown): WorldMessage | null {
     }
     case 'pong':
       return { type: 'pong' }
+    case 'config':
+      if (typeof raw['enabled'] !== 'boolean' || typeof raw['learning'] !== 'boolean') return null
+      return {
+        type: 'config',
+        enabled: raw['enabled'],
+        learning: raw['learning'],
+        attitude: typeof raw['attitude'] === 'string' ? raw['attitude'] : 'normal',
+        adult: raw['adult'] === true,
+      }
     case 'command': {
       if (raw['command'] !== 'vocab' || !isRecord(raw['payload'])) return null
       const p = raw['payload']

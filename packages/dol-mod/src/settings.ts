@@ -12,6 +12,8 @@ export interface Settings {
   altSentence: boolean
   /** World 端口；null = 17321。改完需重新载入游戏。 */
   port: number | null
+  /** 学习英语模式；false = 只陪玩。 */
+  learning: boolean
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -20,6 +22,7 @@ export const DEFAULT_SETTINGS: Settings = {
   wordCard: true,
   altSentence: true,
   port: null,
+  learning: true,
 }
 
 const KEY = 'settings.v1'
@@ -37,6 +40,7 @@ export function loadSettings(kv: KV): Settings {
       wordCard: typeof o['wordCard'] === 'boolean' ? o['wordCard'] : DEFAULT_SETTINGS.wordCard,
       altSentence: typeof o['altSentence'] === 'boolean' ? o['altSentence'] : DEFAULT_SETTINGS.altSentence,
       port: validPort(o['port']),
+      learning: typeof o['learning'] === 'boolean' ? o['learning'] : DEFAULT_SETTINGS.learning,
     }
   } catch {
     return { ...DEFAULT_SETTINGS }
@@ -58,6 +62,7 @@ export function normalize(settings: Settings): Settings {
     wordCard: settings.wordCard === true,
     altSentence: settings.altSentence === true,
     port: validPort(settings.port),
+    learning: settings.learning !== false,
   }
 }
 
