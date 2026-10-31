@@ -29,7 +29,7 @@ import {
 } from './protocol.ts'
 import { DolServer } from './server.ts'
 
-const VERSION = '0.1.9'
+const VERSION = '0.1.10'
 const MODES: readonly DolMode[] = ['proactive', 'trigger', 'passive']
 
 export interface DolWorldDeps {
@@ -104,6 +104,7 @@ export class DolWorld implements World {
       connected: this.server?.connected ? 'yes' : 'no',
       port: String(this.server?.actualPort ?? cfg.port),
       learning: cfg.learning ? 'yes' : 'no',
+      onboarded: cfg.onboarded ? 'yes' : 'no',
       attitude: ATTITUDE_LABELS[attitude],
       attitude_rule: ATTITUDE_RULES[attitude],
     }
@@ -501,10 +502,6 @@ export class DolWorld implements World {
 
   private onConnection(connected: boolean): void {
     if (connected) this.pushConfig()
-    // 断线重连抖动时别刷屏：30 秒内只报一次连接状态变化。
-    const now = Date.now()
-    if (now - this.lastConnEventAt < 30_000) return
-    this.lastConnEventAt = now
     if (connected && !this.deps.cfg.onboarded) {
       void this.pushEvent({
         type: 'dol.onboarding',
@@ -512,6 +509,10 @@ export class DolWorld implements World {
         trigger: 'piggyback',
       })
     }
+    // 断线重连抖动时别刷屏：30 秒内只报一次连接状态变化。
+    const now = Date.now()
+    if (now - this.lastConnEventAt < 30_000) return
+    this.lastConnEventAt = now
     void this.pushEvent({
       type: connected ? 'dol.connected' : 'dol.disconnected',
       text: connected ? '玩家打开了 DoL，模组已连上，可以陪他一起玩了。' : 'DoL 已断开（游戏关了，或模组停了）。',

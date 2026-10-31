@@ -1,9 +1,9 @@
 {
   "name": "cortico-world-dol",
-  "version": "0.1.9",
+  "version": "0.1.10",
   "private": true,
   "type": "module",
-  "description": "把 Degrees of Lewdity 英文原版的场景交给 Coo，并在游戏里提供查词、词根与整句讲解",
+  "description": "让 Coo 陪你玩 Degrees of Lewdity：可以学英语（查词、词根、整句讲解），也可以只陪玩。",
   "license": "MIT",
   "main": "./src/index.ts",
   "keywords": [
@@ -12,7 +12,7 @@
   "cortico": {
     "kind": "world",
     "api": 6,
-    "displayName": "DoL 陪读",
+    "displayName": "欲都孤鱼与多邻鱼",
     "webUiClient": "dist/webui.js",
     "describe": "describe.json"
   },
