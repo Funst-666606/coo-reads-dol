@@ -137,11 +137,28 @@ for (const target of targets) {
       if (verified) {
         console.log(`已发布：https://www.npmjs.com/package/${pkg.name}/v/${pkg.version}`)
       } else {
-        console.warn(
-          `\n[publish-npm] 发布命令已成功，但 registry 尚未同步 ${pkg.name}@${pkg.version}。\n` +
-            '这不是失败：npm 页面通常几分钟内出现。稍后用下面命令确认：\n' +
-            `  npm view ${pkg.name} version\n`,
-        )
+        const latest = spawnSync('npm', ['view', pkg.name, 'version'], {
+          cwd: root,
+          env,
+          encoding: 'utf8',
+          shell: process.platform === 'win32',
+        })
+        const latestVersion = String(latest.stdout || '').trim()
+        if (latestVersion === '0.0.0-stage') {
+          console.warn(
+            `\n[publish-npm] 这是 npm 的「分阶段发布」（staged publish）。\n` +
+              `当前公开版本只是占位符 0.0.0-stage，真实版本 ${pkg.version} 还在等待审批。\n` +
+              '请到 npmjs.com → 左侧 Staged Packages（或包设置里的 Staged Releases）用 2FA 批准。\n' +
+              '批准后 0.0.0-stage 会被 0.1.5 替换，再运行：\n' +
+              `  npm view ${pkg.name} version\n`,
+          )
+        } else {
+          console.warn(
+            `\n[publish-npm] 发布命令已成功，但 registry 尚未同步 ${pkg.name}@${pkg.version}。\n` +
+              '这不是失败：npm 页面通常几分钟内出现。稍后用下面命令确认：\n' +
+              `  npm view ${pkg.name} version\n`,
+          )
+        }
       }
     }
   } finally {
