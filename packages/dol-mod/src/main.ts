@@ -20,7 +20,7 @@ import { loadSettings, saveSettings } from './settings.ts'
 import { applyVocabCommand } from './vocab-commands.ts'
 
 const TAG = '[CooBridge]'
-const CLIENT_VERSION = '0.1.13'
+const CLIENT_VERSION = '0.1.14'
 const SUPPORTED_GAME = '0.5.12.13'
 const PORT_BASE = 17321
 const PORT_COUNT = 10
@@ -57,10 +57,7 @@ function boot(): void {
         return
       }
       const i18n = detectI18n()
-      if (i18n) {
-        showFatal(i18n)
-        return
-      }
+      if (i18n) showCompanionBanner(i18n)
 
       const kv = localKV()
       const book = new VocabBook(kv)
@@ -73,7 +70,13 @@ function boot(): void {
         askSentence: (text) => bridge.askSentence(text),
         askWord: (word, sentence) => bridge.askWord(word, sentence),
         notifyVocab: (op, entry) => bridge.sendVocab(op, entry),
-        settings,
+        settings: { ...settings, learning: settings.learning && !i18n },
+        learning: settings.learning && !i18n,
+        setLearning: (learning) => {
+          settings.learning = learning
+          saveSettings(kv, settings)
+          bridge.setLearning(learning)
+        },
         saveSettings: (next) => saveSettings(kv, next),
         connected: () => bridge.isConnected(),
         reconnect: () => bridge.reconnect(),
