@@ -186,8 +186,8 @@ export default {
             const note = document.createElement('div')
             note.className = 'cb-host-note'
             note.textContent = t(
-              '学习版说明：评论态度锁定「严谨」，只做语言与剧情的中性说明，不生成性内容；成人内容与开发者模式暂未开放。',
-              'Learning build: comments are locked to Strict and stay non-sexual. Adult content and developer mode are unavailable.',
+              '学习版说明：专注英语学习，评论态度锁定「严谨」，只做语言与剧情的中性说明；其他模式暂未开放。',
+              'Learning build: focused on English learning. Comments are locked to Strict; other modes are unavailable.',
             )
             playBox.append(note)
           }

@@ -1,38 +1,20 @@
-# cortico-world-dol
+# 欲都孤鱼与多邻鱼 · 学习版
 
-Cortico World 扩展：把 **Degrees of Lewdity 英文原版**的场景交给 Coo，并把玩家点选的句子/单词转给 Coo
-讲解，再把答复送回游戏。
+Cortico World 扩展：把 **Degrees of Lewdity 英文原版**的场景交给 Coo，并把玩家点选的句子/单词
+转给 Coo 讲解，再把答复送回游戏，用于英语学习。
 
-- 本地服务：`127.0.0.1:17321`（被占向上顺延）
-- 协议：`packages/protocol` v1
-- 只支持英文原版；检测到汉化由模组先拦
-- 需要游戏侧安装 `CooBridge.mod.zip`
+## 学习版
 
-## 工具
+- 评论态度锁定「严谨」，只做语言与剧情的中性说明；
+- 「开发者模式」与其他模式置灰、不可点；
+- 只保留查词、词根、整句讲解、生词复习与朗读。
 
-| 工具 | 作用 |
-|---|---|
-| `dol_teach` | 回传某条学句请求的翻译与讲解 |
-| `dol_define` | 回传某条查词请求的释义/词根 |
-| `dol_now` | 当前场景与连接状态 |
-| `dol_mode` | 读取/切换 主动/触发/被动 |
-| `dol_vocab` | 生词统计、最近加入、今天到期 |
+## 安装
 
-## 事件
-
-`dol.connected` / `dol.disconnected` / `dol.scene` / `dol.choice` / `dol.ask` / `dol.word_ask` / `dol.vocab`
-
-## 配置（`worlds.dol.*`）
-
-| 键 | 默认 | 说明 |
-|---|---|---|
-| `enabled` | `false` | 在 World 页手动启用 |
-| `port` | `17321` | 本地端口 |
-| `mode` | `trigger` | 主动 / 触发 / 被动 |
-| `maxCommentsPerDay` | `0` | 0 = 不限（默认） |
-| `sceneTextLimit` | `4000` | 发给 Coo 的正文字符上限 |
-| `replyTimeoutSec` | `20` | 等 Coo 回传的超时 |
-
+1. 解压到固定目录；
+2. Coopanion → 扩展 → 从本机目录安装；
+3. 重启 Coopanion 并启用；
+4. 游戏内安装配套 `CooBridge.mod.zip`。
 
 ## 许可
 
