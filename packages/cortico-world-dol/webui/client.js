@@ -132,6 +132,16 @@ export default {
               await refresh()
             }, status.adult),
           )
+
+          const host = mkBtn(t('主持模式（即将推出）', 'Host mode (coming soon)'), () => {}, false)
+          host.disabled = true
+          const hostNote = document.createElement('div')
+          hostNote.className = 'cb-muted'
+          hostNote.textContent = t(
+            '主持模式：让 Coo 自己操作游戏（换装、行动、选选项等），将在不久后加入。',
+            'Host mode: let Coo play the game itself. Coming soon.',
+          )
+          playBox.append(host, hostNote)
         }
 
         const table = ui.table({
