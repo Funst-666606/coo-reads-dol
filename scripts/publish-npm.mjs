@@ -1,18 +1,14 @@
 #!/usr/bin/env node
 /**
- * npm 发布脚本（在本地运行；沙箱环境不能 spawn，故未在此自动执行）。
+ * npm 发布脚本（在本地运行）。
  *
  * 用法：
- *   NPM_TOKEN=... node scripts/publish-npm.mjs                 # 只发学习版（sfw）
- *   NPM_TOKEN=... node scripts/publish-npm.mjs --variant full  # 只发完整版（需 --yes-i-know）
- *   NPM_TOKEN=... node scripts/publish-npm.mjs --variant both --yes-i-know
- *   node scripts/publish-npm.mjs --dry-run                     # 不发布，只打包检查
+ *   npm login && node scripts/publish-npm.mjs              # 用已登录的 npm 账号
+ *   NPM_TOKEN=... node scripts/publish-npm.mjs             # 用 Automation token
+ *   NPM_TOKEN=... node scripts/publish-npm.mjs --variant full --yes-i-know
+ *   node scripts/publish-npm.mjs --dry-run
  *
- * 说明：
- * - 从 git worktree（sfw / main）取对应分支的包，不切换当前工作区；
- * - 构建 dist/webui.js，校验包名、版本、private、cortico.api、keywords；
- * - 用临时 npmrc（放在 .cache，gitignore 内）传 token，发布后删除；
- * - 完整版含 NSFW 档位，Cortico 官方市场会拉黑，默认不发布。
+ * 只从 git worktree（sfw / main）取包，不切换当前工作区。
  */
 import { spawnSync } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
@@ -31,7 +27,12 @@ function fail(message) {
   process.exit(1)
 }
 function run(cmd, cmdArgs, cwd, env = process.env) {
-  const res = spawnSync(cmd, cmdArgs, { cwd, env, stdio: 'inherit', shell: process.platform === 'win32' })
+  const res = spawnSync(cmd, cmdArgs, {
+    cwd,
+    env,
+    stdio: 'inherit',
+    shell: process.platform === 'win32',
+  })
   if (res.error) fail(`无法执行 ${cmd}：${res.error.message}`)
   if (res.status !== 0) fail(`${cmd} ${cmdArgs.join(' ')} 退出码 ${res.status}`)
 }
@@ -48,13 +49,25 @@ if (variant !== 'sfw' && !confirmed) {
       '确认要发布完整版请加 --yes-i-know；只发学习版用默认的 --variant sfw。',
   )
 }
+
+// 没有 token 时允许使用已登录的 npm 账号
+let useToken = Boolean(token)
 if (!dryRun && !token) {
-  fail(
-    '缺少 NPM_TOKEN。\n' +
-      '请到 npmjs.com → Access Tokens 生成 Automation token（绕过 2FA），然后：\n' +
-      '  PowerShell: $env:NPM_TOKEN="npm_..."; node scripts/publish-npm.mjs\n' +
-      '  bash:       NPM_TOKEN=npm_... node scripts/publish-npm.mjs',
-  )
+  const who = spawnSync('npm', ['whoami'], {
+    cwd: root,
+    encoding: 'utf8',
+    shell: process.platform === 'win32',
+  })
+  if (who.status !== 0) {
+    fail(
+      '没有 NPM_TOKEN，也没有检测到 npm 登录。\n' +
+        '两种方式任选：\n' +
+        '  1) 先运行：npm login，登录后再运行本脚本；\n' +
+        '  2) 设置 NPM_TOKEN（npmjs.com → Access Tokens → Automation）。',
+    )
+  }
+  console.log(`使用已登录的 npm 账号：${(who.stdout || '').trim()}`)
+  useToken = false
 }
 
 const targets = variant === 'both' ? ['sfw', 'full'] : [variant]
@@ -81,7 +94,6 @@ for (const target of targets) {
     if (!Array.isArray(pkg.keywords) || !pkg.keywords.includes('cortico-world')) {
       fail('缺少 cortico-world 关键字，市场不会收录')
     }
-
     if (target === 'sfw') {
       const variantFile = readFileSync(join(pkgDir, 'src/variant.ts'), 'utf8')
       if (!/SFW = true/.test(variantFile)) fail('sfw 分支的 variant.ts 不是 SFW=true')
@@ -91,15 +103,14 @@ for (const target of targets) {
     run('node', [join(pkgDir, 'scripts', 'build.mjs')], root)
     if (!existsSync(join(pkgDir, 'dist', 'webui.js'))) fail('构建后缺少 dist/webui.js')
 
-    writeFileSync(
-      npmrc,
-      'registry=https://registry.npmjs.org/\n' +
-        `//registry.npmjs.org/:_authToken=${token ?? 'dry-run'}\n`,
-    )
-    const env = {
-      ...process.env,
-      NPM_CONFIG_USERCONFIG: npmrc,
-      NPM_CONFIG_CACHE: join(cache, 'npm'),
+    let env = { ...process.env, NPM_CONFIG_CACHE: join(cache, 'npm') }
+    if (useToken) {
+      writeFileSync(
+        npmrc,
+        'registry=https://registry.npmjs.org/\n' +
+          `//registry.npmjs.org/:_authToken=${token}\n`,
+      )
+      env = { ...env, NPM_CONFIG_USERCONFIG: npmrc }
     }
 
     const publishArgs = ['publish', '--access', 'public', '--registry', 'https://registry.npmjs.org/']
@@ -113,7 +124,11 @@ for (const target of targets) {
     }
   } finally {
     run('git', ['worktree', 'remove', '--force', dir], root)
-    rmSync(npmrc, { force: true })
+    try {
+      rmSync(npmrc, { force: true })
+    } catch {
+      /* 忽略 */
+    }
   }
 }
 
