@@ -7,37 +7,38 @@ if /i "%~1"=="--dry-run" set "DRY=--dry-run"
 
 where node >nul 2>nul
 if errorlevel 1 (
-  echo [??] ??? node????? Node.js 22+?
+  echo [ERROR] Node.js not found. Install Node.js 22+ first.
   pause
   exit /b 1
 )
 where git >nul 2>nul
 if errorlevel 1 (
-  echo [??] ??? git????? Git for Windows?
+  echo [ERROR] Git not found. Install Git for Windows first.
   pause
   exit /b 1
 )
 
 if not defined NPM_TOKEN (
   echo.
-  echo ?? npm ? Automation Token?npmjs.com -^> Access Tokens??
-  echo ???????????????????
+  echo npm Automation token required.
+  echo Get one at: npmjs.com -^> Access Tokens -^> Automation
+  echo Paste the token and press Enter ^(input is visible^):
   set /p NPM_TOKEN=
 )
 if not defined NPM_TOKEN (
-  echo [??] ?? NPM_TOKEN?????
+  echo [ERROR] NPM_TOKEN is empty. Cancelled.
   pause
   exit /b 1
 )
 
 echo.
-echo ????????cortico-world-dol-sfw
-echo ?????sfw
-if defined DRY echo ???dry-run????????
+echo Publishing SFW build: cortico-world-dol-sfw
+echo Source branch: sfw
+if defined DRY echo Mode: dry-run ^(nothing will be uploaded^)
 echo.
-choice /C YN /M "????"
+choice /C YN /M "Continue"
 if errorlevel 2 (
-  echo ????
+  echo Cancelled.
   pause
   exit /b 0
 )
@@ -47,9 +48,9 @@ node scripts\publish-npm.mjs --variant sfw %DRY%
 set "CODE=%ERRORLEVEL%"
 echo.
 if not "%CODE%"=="0" (
-  echo [??] ?????????? %CODE%?
+  echo [FAILED] Publish did not finish. Exit code: %CODE%
 ) else (
-  echo [??] ??????????
+  echo [DONE] SFW publish flow finished.
 )
 pause
 exit /b %CODE%
