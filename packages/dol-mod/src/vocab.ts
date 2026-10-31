@@ -21,6 +21,8 @@ export interface VocabEntry extends VocabInput {
   lastSeenAt: number
   srs: SrsState
   mastered?: boolean
+  /** Coo 最后一次改动这个词的时间（加了/改了释义）。 */
+  cooUpdatedAt?: number
 }
 
 const KEY = 'vocab.v1'
@@ -86,6 +88,18 @@ export class VocabBook {
     if (patch.source) entry.source = patch.source
     if (patch.roots) entry.roots = patch.roots
     if (patch.family) entry.family = patch.family
+    entry.lastSeenAt = now
+    this.save(list)
+    return entry
+  }
+
+  /** 标记这个词由 Coo 新增或改动。 */
+  markCoo(lemma: string, now = Date.now()): VocabEntry | null {
+    const list = this.load()
+    const entry = list.find((e) => e.lemma.toLowerCase() === lemma.toLowerCase())
+    if (!entry) return null
+    entry.source = 'coo'
+    entry.cooUpdatedAt = now
     entry.lastSeenAt = now
     this.save(list)
     return entry

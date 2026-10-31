@@ -23,7 +23,8 @@ export function applyVocabCommand(book: VocabBook, cmd: VocabCommand): CommandRe
       ...(cmd.sentence ? { sentence: cmd.sentence } : {}),
     })
     // 已存在时允许 Coo 覆盖释义（这正是「改已有词」的入口）
-    const final = existing ? (book.update(entry.lemma, { gloss, source: 'coo' }) ?? entry) : entry
+    const base = existing ? (book.update(entry.lemma, { gloss, source: 'coo' }) ?? entry) : entry
+    const final = book.markCoo(base.lemma) ?? base
     return {
       op: 'add',
       entry: {

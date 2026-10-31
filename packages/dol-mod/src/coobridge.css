@@ -199,6 +199,17 @@
   font-size: 13px;
 }
 
+.cb-tag {
+  margin-left: 6px;
+  padding: 0 5px;
+  border-radius: 4px;
+  background: rgba(159, 199, 216, 0.18);
+  color: #9fc7d8;
+  font-size: 10px;
+  font-weight: 600;
+  vertical-align: middle;
+}
+
 .cb-item-gloss {
   color: #b9b9c2;
   font-size: 11px;

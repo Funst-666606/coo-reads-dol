@@ -31,6 +31,7 @@ test('add：已存在的词会被 Coo 的释义覆盖', () => {
   assert.equal(result?.op, 'add')
   assert.equal(book.list()[0]?.gloss, '（Coo）不可思议的')
   assert.equal(book.list()[0]?.source, 'coo')
+  assert.ok((book.list()[0]?.cooUpdatedAt ?? 0) > 0, '应记录 Coo 改动时间')
 })
 
 test('remove：删掉已有词；没有则返回 null', () => {

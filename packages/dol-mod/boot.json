@@ -1,6 +1,6 @@
 {
   "name": "CooBridge",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "styleFileList": ["CooBridge.css"],
   "scriptFileList": ["CooBridge.js"],
   "tweeFileList": [],

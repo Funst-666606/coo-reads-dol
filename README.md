@@ -14,7 +14,7 @@
 | M4 点句问 Coo | ✅ 已实现（Alt+点击或选中文本，带缓存与超时），待验证 |
 | M5 复习 / 导出 | ✅ 已实现（1/2/4/7/15/30 天，JSON/CSV 导出） |
 | M6 World 面板 / 生词镜像 | ✅ 已实现（连接状态、模式切换、镜像列表、导出、配置组），待 Coopanion 内验证 |
-| 测试 | 90 个（协议、WS 端到端、World 集成、bundle ↔ World 全链路 E2E、jsdom 游戏内 UI/设置/面板、失败路径、朗读、Coo 改词库、扩展入口、zip 结构、自描述、场景读取、版本探测、汉化检测、查词、词根、SRS、生词本、CSV） |
+| 测试 | 91 个（协议、WS 端到端、World 集成、bundle ↔ World 全链路 E2E、jsdom 游戏内 UI/设置/面板、失败路径、朗读、Coo 改词库、扩展入口、zip 结构、自描述、场景读取、版本探测、汉化检测、查词、词根、SRS、生词本、CSV） |
 | 框架校验 | ✅ 用 Coopanion 自带的 `manifest` / `dry-mount` / `describe` 三项校验，全过（`node scripts/fw-check.mjs`） |
 | 联调 | 见 [联调验收清单](docs/联调验收.md)｜[故障排查](docs/故障排查.md) |
 

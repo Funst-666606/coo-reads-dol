@@ -65,6 +65,7 @@ export class Ui {
   private panel!: HTMLDivElement
   private card!: HTMLDivElement
   private tab: 'vocab' | 'review' | 'settings' = 'vocab'
+  private vocabFilter: 'all' | 'coo' = 'all'
   private current: CardState | null = null
   private pendingId: string | null = null
   private anchor = { x: 0, y: 0 }
@@ -431,7 +432,8 @@ export class Ui {
                 ...(coo.family ? { family: coo.family } : {}),
               })
               if (updated) {
-                this.notifyEntry('add', updated)
+                const marked = this.deps.book.markCoo(updated.lemma) ?? updated
+                this.notifyEntry('add', marked)
                 this.toast('已用 Coo 的释义更新生词本', false)
                 this.refreshPanel()
               }
@@ -567,13 +569,17 @@ export class Ui {
   }
 
   private renderVocab(root: Element): void {
-    const list = this.deps.book.list()
+    const all = this.deps.book.list()
+    const cooCount = all.filter((e) => e.source === 'coo' || e.cooUpdatedAt).length
+    const list = this.vocabFilter === 'coo' ? all.filter((e) => e.source === 'coo' || e.cooUpdatedAt) : all
     const stats = this.deps.book.stats()
-    root.append(row('cb-summary', `共 ${stats.total} 词 · 到期 ${stats.due} · 已掌握 ${stats.mastered}`))
+    root.append(row('cb-summary', `共 ${stats.total} 词 · 到期 ${stats.due} · 已掌握 ${stats.mastered} · Coo 改动 ${cooCount}`))
     root.append(this.vocabToolbar())
 
     if (list.length === 0) {
-      root.append(row('cb-muted', '还没有生词。点游戏里的词加入，或手动添加 / 导入。'))
+      root.append(
+        row('cb-muted', this.vocabFilter === 'coo' ? 'Coo 还没有新增或改动过词。' : '还没有生词。点游戏里的词加入，或手动添加 / 导入。'),
+      )
       return
     }
     const wrap = document.createElement('div')
@@ -587,7 +593,15 @@ export class Ui {
       main.innerHTML = `<b></b><span class="cb-item-gloss"></span>`
       const b = main.querySelector('b')
       const g = main.querySelector('.cb-item-gloss')
-      if (b) b.textContent = entry.lemma
+      if (b) {
+        b.textContent = entry.lemma
+        if (entry.source === 'coo' || entry.cooUpdatedAt) {
+          const tag = document.createElement('span')
+          tag.className = 'cb-tag'
+          tag.textContent = 'Coo'
+          b.append(tag)
+        }
+      }
       if (g) g.textContent = entry.gloss
       main.addEventListener('click', () => {
         this.openEntry(entry)
@@ -615,7 +629,14 @@ export class Ui {
   private vocabToolbar(): HTMLElement {
     const wrap = document.createElement('div')
     wrap.className = 'cb-toolbar'
-    wrap.append(button('手动添加', () => this.showManualAdd(wrap)), button('导入词库', () => this.pickImportFile()))
+    wrap.append(
+      button('手动添加', () => this.showManualAdd(wrap)),
+      button('导入词库', () => this.pickImportFile()),
+      button(this.vocabFilter === 'coo' ? '显示全部' : '只看 Coo 改动', () => {
+        this.vocabFilter = this.vocabFilter === 'coo' ? 'all' : 'coo'
+        this.refreshPanel()
+      }),
+    )
     return wrap
   }
 

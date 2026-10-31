@@ -424,6 +424,39 @@ test('词库菜单：手动添加与编辑释义', async () => {
   assert.equal(book.find('whisper')?.gloss, '低声说')
 })
 
+test('词库界面能看出 Coo 新增/改动的词，并可只看它们', async () => {
+  const { dom } = setupDom()
+  const { Ui } = await import('../src/ui.ts')
+  const kv = memoryKV()
+  const book = new VocabBook(kv)
+  book.add({ word: 'dark', lemma: 'dark', gloss: '黑暗的', source: 'local' })
+  book.add({ word: 'light', lemma: 'light', gloss: '光', source: 'local' })
+  book.markCoo('light')
+
+  const ui = new Ui({
+    book,
+    sentenceCache: new JsonCache(kv, 'trans.v1'),
+    wordCache: new JsonCache(kv, 'word.v1'),
+    askSentence: () => null,
+    askWord: () => null,
+    notifyVocab: () => {},
+    connected: () => true,
+    reconnect: () => {},
+  })
+  ui.mount()
+  dom.window.document.getElementById('cb-badge')?.dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true }))
+  const panel = dom.window.document.getElementById('cb-panel')
+  assert.ok(panel)
+  assert.match(panel.textContent ?? '', /Coo 改动 1/)
+  assert.match(panel.textContent ?? '', /Coo/)
+
+  const filter = [...panel.querySelectorAll('button')].find((b) => b.textContent === '只看 Coo 改动')
+  assert.ok(filter)
+  filter.dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true }))
+  assert.match(panel.textContent ?? '', /light/)
+  assert.doesNotMatch(panel.textContent ?? '', /dark/)
+})
+
 test('面板：生词列表、复习、自检', async () => {
   const { dom } = setupDom()
   const { Ui } = await import('../src/ui.ts')
