@@ -20,22 +20,16 @@ import { loadSettings, saveSettings } from './settings.ts'
 import { applyVocabCommand } from './vocab-commands.ts'
 
 const TAG = '[CooBridge]'
-const CLIENT_VERSION = '0.1.6'
+const CLIENT_VERSION = '0.1.7'
 const SUPPORTED_GAME = '0.5.12.13'
 const PORT_BASE = 17321
 const PORT_COUNT = 10
 
-/** 端口可以被 window.CooBridgePort 或 localStorage 的 cb.port 覆盖（测试/端口冲突时用）。 */
-function readPortBase(): number {
-  try {
-    const forced = (window as unknown as { CooBridgePort?: unknown }).CooBridgePort
-    if (typeof forced === 'number' && Number.isInteger(forced) && forced > 0 && forced < 65536) return forced
-    const stored = Number(globalThis.localStorage?.getItem('cb.port'))
-    if (Number.isInteger(stored) && stored > 0 && stored < 65536) return stored
-  } catch {
-    /* localStorage 不可用就用默认 */
-  }
-  return PORT_BASE
+/** 端口来自设置里的「端口」（默认 17321）；测试可用 __coobridgePort 覆盖。改端口后需重新载入游戏。 */
+function readPortBase(setting: number | null): number {
+  const forced = (globalThis as unknown as { __coobridgePort?: unknown }).__coobridgePort
+  if (typeof forced === 'number' && Number.isInteger(forced) && forced > 0 && forced < 65536) return forced
+  return setting ?? PORT_BASE
 }
 
 declare global {
@@ -71,7 +65,7 @@ function boot(): void {
       const kv = localKV()
       const book = new VocabBook(kv)
       const settings = loadSettings(kv)
-      const bridge = new Bridge(readPortBase())
+      const bridge = new Bridge(readPortBase(settings.port))
       const ui = new Ui({
         book,
         sentenceCache: new JsonCache(kv, 'trans.v1'),

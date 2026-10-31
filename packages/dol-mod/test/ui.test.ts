@@ -375,6 +375,55 @@ test('正文之外（侧栏/二级面板）也能点词，按钮不触发', asyn
   assert.equal(card.hidden, true)
 })
 
+test('词库菜单：手动添加与编辑释义', async () => {
+  const { dom } = setupDom()
+  const { Ui } = await import('../src/ui.ts')
+  const kv = memoryKV()
+  const book = new VocabBook(kv)
+  const ui = new Ui({
+    book,
+    sentenceCache: new JsonCache(kv, 'trans.v1'),
+    wordCache: new JsonCache(kv, 'word.v1'),
+    askSentence: () => null,
+    askWord: () => null,
+    notifyVocab: () => {},
+    connected: () => true,
+    reconnect: () => {},
+  })
+  ui.mount()
+
+  dom.window.document.getElementById('cb-badge')?.dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true }))
+  const panel = dom.window.document.getElementById('cb-panel')
+  assert.ok(panel)
+
+  const addBtn = [...panel.querySelectorAll('button')].find((b) => b.textContent === '手动添加')
+  assert.ok(addBtn, '缺少手动添加按钮')
+  addBtn.dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true }))
+
+  const inputs = panel.querySelectorAll('.cb-editor .cb-input')
+  assert.equal(inputs.length, 2)
+  ;(inputs[0] as HTMLInputElement).value = 'whisper'
+  ;(inputs[1] as HTMLInputElement).value = '低语'
+  const save = [...panel.querySelectorAll('.cb-editor button')].find((b) => b.textContent === '保存')
+  assert.ok(save)
+  save.dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true }))
+
+  assert.match(panel.textContent ?? '', /whisper/)
+  assert.equal(book.find('whisper')?.gloss, '低语')
+
+  const edit = [...panel.querySelectorAll('.cb-item button')].find((b) => b.textContent === '改')
+  assert.ok(edit, '缺少编辑按钮')
+  edit.dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true }))
+  const glossInput = panel.querySelector('.cb-editing .cb-input') as HTMLInputElement | null
+  assert.ok(glossInput)
+  glossInput.value = '低声说'
+  const saveEdit = [...panel.querySelectorAll('.cb-editing button')].find((b) => b.textContent === '保存')
+  assert.ok(saveEdit)
+  saveEdit.dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true }))
+
+  assert.equal(book.find('whisper')?.gloss, '低声说')
+})
+
 test('面板：生词列表、复习、自检', async () => {
   const { dom } = setupDom()
   const { Ui } = await import('../src/ui.ts')

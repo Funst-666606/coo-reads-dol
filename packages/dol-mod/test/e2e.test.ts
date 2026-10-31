@@ -66,7 +66,7 @@ test('构建产物 ↔ World：连接、场景、学句往返、卡片显示', {
   // 端口可被覆盖：避免依赖 17321（可能被真实运行的 World 占着）
   const status = (await world.invoke('main', 'status', [])) as { port: number }
   Object.assign(w, {
-    CooBridgePort: status.port,
+    __coobridgePort: status.port,
     modUtils: { getModListName: () => ['TweeReplacer'], getNowMainLanguage: () => 'en' },
     State: { passage: 'Bedroom', variables: { days: 3, time: 600, location: 'Orphanage' } },
     StartConfig: { version: '0.5.12.13' },

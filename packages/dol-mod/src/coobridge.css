@@ -142,6 +142,39 @@
   gap: 6px;
 }
 
+.cb-toolbar {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.cb-input {
+  min-width: 0;
+  padding: 5px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 6px;
+  background: #1c1c20;
+  color: #f0f0f4;
+  font-size: 12px;
+}
+
+.cb-editor {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 6px 0 10px;
+  padding: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.cb-editor .cb-input { flex: 1 1 100px; }
+
+.cb-editing { flex-wrap: wrap; }
+
+.cb-editing .cb-input { flex: 1 1 120px; }
+
 .cb-item {
   display: flex;
   gap: 6px;

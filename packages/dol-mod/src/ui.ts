@@ -15,6 +15,7 @@ import { requestId } from './protocol.ts'
 import { errorText } from './env.ts'
 import { speakWord } from './speech.ts'
 import { DEFAULT_SETTINGS, clampRate, type Settings } from './settings.ts'
+import { importVocab, parseVocabText } from './vocab-io.ts'
 import { describePassageRoot, resolvePassageRoot } from './scene.ts'
 
 export interface UiDeps {
@@ -569,8 +570,10 @@ export class Ui {
     const list = this.deps.book.list()
     const stats = this.deps.book.stats()
     root.append(row('cb-summary', `共 ${stats.total} 词 · 到期 ${stats.due} · 已掌握 ${stats.mastered}`))
+    root.append(this.vocabToolbar())
+
     if (list.length === 0) {
-      root.append(row('cb-muted', '还没有生词。在游戏里点一个词，加入生词本。'))
+      root.append(row('cb-muted', '还没有生词。点游戏里的词加入，或手动添加 / 导入。'))
       return
     }
     const wrap = document.createElement('div')
@@ -598,10 +601,99 @@ export class Ui {
         this.deps.notifyVocab('remove', { lemma: entry.lemma })
         this.refreshPanel()
       })
-      item.append(main, del)
+      const edit = document.createElement('button')
+      edit.type = 'button'
+      edit.className = 'cb-item-del'
+      edit.textContent = '改'
+      edit.addEventListener('click', () => this.showEntryEditor(item, entry))
+      item.append(main, edit, del)
       wrap.append(item)
     }
     root.append(wrap)
+  }
+
+  private vocabToolbar(): HTMLElement {
+    const wrap = document.createElement('div')
+    wrap.className = 'cb-toolbar'
+    wrap.append(button('手动添加', () => this.showManualAdd(wrap)), button('导入词库', () => this.pickImportFile()))
+    return wrap
+  }
+
+  private showManualAdd(host: HTMLElement): void {
+    const editor = document.createElement('div')
+    editor.className = 'cb-editor'
+    const word = document.createElement('input')
+    word.className = 'cb-input'
+    word.placeholder = '单词'
+    const gloss = document.createElement('input')
+    gloss.className = 'cb-input'
+    gloss.placeholder = '中文释义'
+    const save = button('保存', () => {
+      const w = word.value.trim()
+      const g = gloss.value.trim()
+      if (!w || !g) {
+        this.toast('单词与释义都要填', true)
+        return
+      }
+      const { entry } = this.deps.book.add({ word: w, lemma: w.toLowerCase(), gloss: g, source: 'local' })
+      this.notifyEntry('add', entry)
+      this.refreshPanel()
+    })
+    const cancel = button('取消', () => editor.remove())
+    editor.append(word, gloss, save, cancel)
+    host.after(editor)
+    word.focus()
+  }
+
+  private pickImportFile(): void {
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = '.json,.csv,application/json,text/csv'
+    input.addEventListener('change', () => {
+      const file = input.files?.[0]
+      if (!file) return
+      void file
+        .text()
+        .then((text) => this.importText(file.name, text))
+        .catch(() => this.toast('读取文件失败', true))
+    })
+    input.click()
+  }
+
+  private importText(name: string, text: string): void {
+    const items = parseVocabText(name, text)
+    if (items.length === 0) {
+      this.toast('没有识别到可导入的词（需要 word + gloss）', true)
+      return
+    }
+    const result = importVocab(this.deps.book, items)
+    for (const entry of result.entries) this.notifyEntry('add', entry)
+    this.toast(`导入完成：新增 ${result.added}，更新 ${result.updated}，跳过 ${result.skipped}`, result.skipped > 0)
+    this.refreshPanel()
+  }
+
+  private showEntryEditor(host: HTMLElement, entry: VocabEntry): void {
+    host.replaceChildren()
+    host.className = 'cb-item cb-editing'
+    const input = document.createElement('input')
+    input.className = 'cb-input'
+    input.value = entry.gloss
+    input.placeholder = '中文释义'
+    const save = button('保存', () => {
+      const gloss = input.value.trim()
+      if (!gloss) {
+        this.toast('释义不能为空', true)
+        return
+      }
+      const updated = this.deps.book.update(entry.lemma, { gloss })
+      if (updated) {
+        this.notifyEntry('add', updated)
+        this.refreshPanel()
+      }
+    })
+    const cancel = button('取消', () => this.refreshPanel())
+    host.append(input, save, cancel)
+    input.focus()
   }
 
   private renderReview(root: Element): void {
@@ -727,6 +819,37 @@ export class Ui {
     })
     rateLine.append(rateLabel, input, output)
     wrap.append(rateLine)
+
+    const portLine = document.createElement('label')
+    portLine.className = 'cb-setting cb-setting-port'
+    const portLabel = document.createElement('span')
+    portLabel.textContent = '端口'
+    const portInput = document.createElement('input')
+    portInput.type = 'number'
+    portInput.min = '1024'
+    portInput.max = '65535'
+    portInput.step = '1'
+    portInput.value = String(this.settings.port ?? 17321)
+    const portSave = document.createElement('button')
+    portSave.type = 'button'
+    portSave.className = 'cb-btn'
+    portSave.textContent = '保存'
+    portSave.addEventListener('click', (ev) => {
+      ev.preventDefault()
+      const port = Number(portInput.value)
+      if (!Number.isInteger(port) || port < 1024 || port > 65535) {
+        this.toast('端口要是 1024–65535 的整数', true)
+        return
+      }
+      this.settings = { ...this.settings, port }
+      this.deps.saveSettings?.(this.settings)
+      this.toast('端口已保存，重新载入游戏后生效', false)
+    })
+    const portHint = document.createElement('span')
+    portHint.className = 'cb-muted'
+    portHint.textContent = '重新载入后生效'
+    portLine.append(portLabel, portInput, portSave, portHint)
+    wrap.append(portLine)
     return wrap
   }
 
