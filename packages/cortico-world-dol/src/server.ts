@@ -1,11 +1,11 @@
 /**
- * 本地 WebSocket 服务：只监听 127.0.0.1，给游戏页面里的模组用。
+ * 本地 WsSocket 服务：只监听 127.0.0.1，给游戏页面里的模组用。
  *
  * 它不懂 Coo，也不懂游戏：只负责「握手 → 收消息 → 转给 World → 把 World 的答复送回去」。
  * 翻译请求的答复由 Coo 调工具产生，所以这里维护一份 pending 表与超时。
  */
 import { createServer, type Server } from 'node:http'
-import { WebSocketServer, type WebSocket } from 'ws'
+import { WsServer, type WsSocket } from './ws.ts'
 import {
   PROTOCOL_VERSION,
   decodeModMessage,
@@ -50,8 +50,8 @@ const OPEN = 1
 
 export class DolServer {
   private http: Server | null = null
-  private wss: WebSocketServer | null = null
-  private socket: WebSocket | null = null
+  private wss: WsServer | null = null
+  private socket: WsSocket | null = null
   private handshaken = false
   private lastSeen = 0
   private heartbeat: ReturnType<typeof setInterval> | null = null
@@ -75,7 +75,7 @@ export class DolServer {
     })
     this.http = http
 
-    const wss = new WebSocketServer({ noServer: true })
+    const wss = new WsServer()
     this.wss = wss
     http.on('upgrade', (req, socket, head) => {
       if (!originAllowed(req.headers.origin)) {
@@ -168,7 +168,7 @@ export class DolServer {
 
   // ── 连接 ────────────────────────────────────────────────────────────────
 
-  private attach(ws: WebSocket): void {
+  private attach(ws: WsSocket): void {
     if (this.socket && this.socket.readyState === OPEN) {
       try {
         this.socket.close(4001, 'replaced')
@@ -204,7 +204,7 @@ export class DolServer {
     ws.on('error', (err) => this.opts.log.warn('dol: socket 错误', String(err)))
   }
 
-  private onMessage(ws: WebSocket, text: string, hsTimer: ReturnType<typeof setTimeout>): void {
+  private onMessage(ws: WsSocket, text: string, hsTimer: ReturnType<typeof setTimeout>): void {
     this.lastSeen = Date.now()
     let raw: unknown
     try {
