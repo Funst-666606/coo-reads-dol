@@ -1,4 +1,4 @@
-﻿/**
+/**
  * 游戏内 UI：单词卡、问句卡、生词/复习/设置面板。
  *
  * 约束：
@@ -162,6 +162,7 @@ export class Ui {
   private bindGameClicks(): void {
     // 容器可能被框架换掉（原版 #passages，MapleBirch #passage-content），所以代理到 document，
     // 每次事件时再解析当前正文容器。
+    // 用捕获阶段：MapleBirch 的二级界面根节点会 stopPropagation，冒泡到不了 document。
     document.addEventListener('click', (ev) => {
       try {
         const e = ev as MouseEvent
@@ -180,7 +181,7 @@ export class Ui {
       } catch (err) {
         this.log(`点词失败：${String(err)}`)
       }
-    })
+    }, true)
 
     document.addEventListener('mouseup', (ev) => {
       try {

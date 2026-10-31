@@ -1,5 +1,10 @@
 # 变更日志（模组）
 
+## 0.1.10 - 2026-11-01
+
+- 修：MapleBirch 的二级界面根节点会 `stopPropagation()`，冒泡阶段收不到点击。
+  点击监听改为捕获阶段，Characteristics / Social 等浮层也能点词。
+
 ## 0.1.9 - 2026-11-01
 
 - 修：MapleBirch 的正文外层带 `data-passage`，被误判为交互元素，导致正文点词全部失效。

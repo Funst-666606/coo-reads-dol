@@ -14,7 +14,7 @@ const TEXT = 'It was an incredible zzzz night.'
 
 function setupDom(): { dom: JSDOM; textNode: Text; setCaret: (offset: number) => void } {
   const dom = new JSDOM(
-    `<!doctype html><html><body><div id="passages"><div id="passage-bedroom" data-passage="Bedroom"><div id="passage-content"><p id="p">${TEXT}</p></div></div></div><div id="sidebar"><p id="side">A strange whisper in the dark.</p><button id="menu">Menu</button></div></body></html>`,
+    `<!doctype html><html><body><div id="passages"><div id="passage-bedroom" data-passage="Bedroom"><div id="passage-content"><p id="p">${TEXT}</p></div></div></div><div id="sidebar"><p id="side">A strange whisper in the dark.</p><button id="menu">Menu</button></div><div id="customOverlay"><div id="customOverlayContent"><p id="ov">You are a girl.</p></div></div></body></html>`,
     { url: 'http://localhost/' },
   )
   const { window } = dom
@@ -373,6 +373,41 @@ test('正文之外（侧栏/二级面板）也能点词，按钮不触发', asyn
   assert.ok(menu)
   menu.dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true, clientX: 12, clientY: 12 }))
   assert.equal(card.hidden, true)
+})
+
+test('二级界面 stopPropagation 时也能点词（捕获阶段）', async () => {
+  const { dom } = setupDom()
+  const { Ui } = await import('../src/ui.ts')
+  const kv = memoryKV()
+  const ui = new Ui({
+    book: new VocabBook(kv),
+    sentenceCache: new JsonCache(kv, 'trans.v1'),
+    wordCache: new JsonCache(kv, 'word.v1'),
+    askSentence: () => null,
+    askWord: () => null,
+    notifyVocab: () => {},
+    connected: () => true,
+    reconnect: () => {},
+  })
+  ui.mount()
+
+  const overlay = dom.window.document.getElementById('customOverlay')
+  assert.ok(overlay)
+  overlay.addEventListener('click', (ev) => ev.stopPropagation())
+
+  const text = dom.window.document.getElementById('ov')?.firstChild
+  assert.ok(text)
+  const range = dom.window.document.createRange()
+  const offset = (text.textContent ?? '').indexOf('girl') + 1
+  range.setStart(text, offset)
+  range.setEnd(text, offset)
+  Object.assign(dom.window.document, { caretRangeFromPoint: () => range })
+
+  overlay.dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true, clientX: 30, clientY: 30 }))
+  const card = dom.window.document.getElementById('cb-card')
+  assert.ok(card)
+  assert.equal(card.hidden, false, '二级界面被 stopPropagation 时也应弹卡')
+  assert.match(card.textContent ?? '', /girl/i)
 })
 
 test('词库菜单：手动添加与编辑释义', async () => {
