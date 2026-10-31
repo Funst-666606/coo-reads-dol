@@ -17,6 +17,38 @@ export interface SceneSource {
   limit?: number
 }
 
+/**
+ * 正文容器可能被框架换掉：
+ * 原版 SugarCube 是 `#passages`，MapleBirch 是 `#passage-content`。
+ * 取文本最多的那个，避免选中空壳。
+ */
+const PASSAGE_SELECTORS = ['#passages', '#passage-content', '.passage-content', '.passage', '#story']
+
+export function resolvePassageRoot(doc: ParentNode = document): HTMLElement | null {
+  let best: HTMLElement | null = null
+  let bestLength = 0
+  for (const selector of PASSAGE_SELECTORS) {
+    for (const node of doc.querySelectorAll(selector)) {
+      const el = node as HTMLElement
+      const length = (el.textContent ?? '').trim().length
+      if (length > bestLength) {
+        best = el
+        bestLength = length
+      }
+    }
+  }
+  return best
+}
+
+/** 诊断用：当前命中哪个容器。 */
+export function describePassageRoot(doc: ParentNode = document): string {
+  const root = resolvePassageRoot(doc)
+  if (!root) return 'none'
+  if (root.id) return `#${root.id}`
+  const cls = (root.className || '').toString().trim().split(/\s+/)[0]
+  return cls ? `.${cls}` : root.tagName.toLowerCase()
+}
+
 export function cleanLabel(text: string): string {
   return text
     .replace(/\s+/g, ' ')

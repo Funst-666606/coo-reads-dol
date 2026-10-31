@@ -14,7 +14,7 @@ const TEXT = 'It was an incredible zzzz night.'
 
 function setupDom(): { dom: JSDOM; textNode: Text; setCaret: (offset: number) => void } {
   const dom = new JSDOM(
-    `<!doctype html><html><body><div id="passages"><p id="p">${TEXT}</p></div></body></html>`,
+    `<!doctype html><html><body><div id="passages"><p id="p">${TEXT}</p></div><div id="sidebar"><p id="side">A strange whisper in the dark.</p><button id="menu">Menu</button></div></body></html>`,
     { url: 'http://localhost/' },
   )
   const { window } = dom
@@ -295,6 +295,45 @@ test('设置：关掉点词查义后点词不弹卡，勾回来会保存', async
   input.checked = true
   input.dispatchEvent(new dom.window.Event('change', { bubbles: true }))
   assert.equal((saved.at(-1) as { wordCard: boolean }).wordCard, true)
+})
+
+test('正文之外（侧栏/二级面板）也能点词，按钮不触发', async () => {
+  const { dom } = setupDom()
+  const { Ui } = await import('../src/ui.ts')
+  const kv = memoryKV()
+  const ui = new Ui({
+    book: new VocabBook(kv),
+    sentenceCache: new JsonCache(kv, 'trans.v1'),
+    wordCache: new JsonCache(kv, 'word.v1'),
+    askSentence: () => null,
+    askWord: () => null,
+    notifyVocab: () => {},
+    connected: () => true,
+    reconnect: () => {},
+  })
+  ui.mount()
+
+  const side = dom.window.document.getElementById('side')
+  assert.ok(side)
+  const node = side.firstChild
+  assert.ok(node)
+  const range = dom.window.document.createRange()
+  range.setStart(node, 2)
+  range.setEnd(node, 2)
+  Object.assign(dom.window.document, { caretRangeFromPoint: () => range })
+
+  side.dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true, clientX: 12, clientY: 12 }))
+  const card = dom.window.document.getElementById('cb-card')
+  assert.ok(card)
+  assert.equal(card.hidden, false, '侧栏文字应能点出单词卡')
+  assert.match(card.textContent ?? '', /strange/)
+
+  // 按钮属于交互元素，不应弹卡
+  card.hidden = true
+  const menu = dom.window.document.getElementById('menu')
+  assert.ok(menu)
+  menu.dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true, clientX: 12, clientY: 12 }))
+  assert.equal(card.hidden, true)
 })
 
 test('面板：生词列表、复习、自检', async () => {

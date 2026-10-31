@@ -9,7 +9,7 @@
  * 不碰存档、不改正文 DOM；所有失败都降级成「不可用」，不影响游戏。
  */
 import { PROTOCOL_VERSION, decodeWorldMessage, encode, requestId, type ModMessage, type VocabCommand } from './protocol.ts'
-import { readScene as readSceneFrom, type Scene } from './scene.ts'
+import { readScene as readSceneFrom, resolvePassageRoot, type Scene } from './scene.ts'
 import { pickGameVersion } from './version.ts'
 import { detectI18n as detectI18nFrom, errorText } from './env.ts'
 import { Ui } from './ui.ts'
@@ -20,7 +20,7 @@ import { loadSettings, saveSettings } from './settings.ts'
 import { applyVocabCommand } from './vocab-commands.ts'
 
 const TAG = '[CooBridge]'
-const CLIENT_VERSION = '0.1.4'
+const CLIENT_VERSION = '0.1.5'
 const SUPPORTED_GAME = '0.5.12.13'
 const PORT_BASE = 17321
 const PORT_COUNT = 10
@@ -165,10 +165,15 @@ function hookPassages(onChange: () => void): void {
     })
     return
   }
-  const target = document.querySelector('#passages')
-  if (!target) return
-  const mo = new MutationObserver(() => onChange())
-  mo.observe(target, { childList: true, subtree: true })
+
+  // 没有 jQuery（或框架换了容器）时：盯 body，防抖后再读；readScene 自己会去重。
+  if (!document.body) return
+  let timer = 0
+  const mo = new MutationObserver(() => {
+    window.clearTimeout(timer)
+    timer = window.setTimeout(() => onChange(), 250)
+  })
+  mo.observe(document.body, { childList: true, subtree: true })
 }
 
 // ── 场景读取 ──────────────────────────────────────────────────────────────
@@ -179,7 +184,7 @@ function readScene(): Scene | null {
     if (!passage) return null
     return readSceneFrom({
       passage,
-      root: document.querySelector('#passages'),
+      root: resolvePassageRoot(document),
       variables: window.State?.variables as Record<string, unknown> | undefined,
     })
   } catch (err) {

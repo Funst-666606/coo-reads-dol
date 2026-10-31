@@ -15,6 +15,7 @@ import { requestId } from './protocol.ts'
 import { errorText } from './env.ts'
 import { speakWord } from './speech.ts'
 import { DEFAULT_SETTINGS, clampRate, type Settings } from './settings.ts'
+import { describePassageRoot, resolvePassageRoot } from './scene.ts'
 
 export interface UiDeps {
   book: VocabBook
@@ -164,16 +165,15 @@ export class Ui {
   // ── 游戏内点击 ──────────────────────────────────────────────────────────
 
   private bindGameClicks(): void {
-    const passages = document.querySelector('#passages')
-    if (!passages) {
-      window.setTimeout(() => this.bindGameClicks(), 2000)
-      return
-    }
-    passages.addEventListener('click', (ev) => {
+    // 容器可能被框架换掉（原版 #passages，MapleBirch #passage-content），所以代理到 document，
+    // 每次事件时再解析当前正文容器。
+    document.addEventListener('click', (ev) => {
       try {
         const e = ev as MouseEvent
         const target = e.target as HTMLElement | null
-        if (target?.closest('a')) return
+        if (!target) return
+        // 本模组自己的浮层、以及游戏里的链接/按钮/输入框都不处理
+        if (isOwnUi(target) || isInteractive(target)) return
         if (e.altKey) {
           if (this.settings.altSentence) this.openSentenceAt(e.clientX, e.clientY)
           return
@@ -196,7 +196,11 @@ export class Ui {
         if (!sel || sel.isCollapsed) return
         const text = sel.toString().replace(/\s+/g, ' ').trim()
         if (text.length < 8 || text.length > 400) return
-        if (!passages.contains(sel.anchorNode ?? null)) return
+        const anchorEl =
+          sel.anchorNode?.nodeType === Node.ELEMENT_NODE
+            ? (sel.anchorNode as HTMLElement)
+            : sel.anchorNode?.parentElement
+        if (!anchorEl || isOwnUi(anchorEl) || isInteractive(anchorEl)) return
         const rect = sel.getRangeAt(0).getBoundingClientRect()
         this.showSentence(text, rect.left, rect.bottom)
       } catch {
@@ -488,7 +492,7 @@ export class Ui {
     const btn = document.createElement('button')
     btn.id = 'cb-badge'
     btn.type = 'button'
-    btn.textContent = 'Coo'
+    btn.textContent = 'Coo ⚙'
     btn.addEventListener('click', () => this.togglePanel())
     document.body.append(btn)
     this.badge = btn
@@ -646,14 +650,14 @@ export class Ui {
 
   /** 自检数据：让玩家（或我）一眼看出是哪一层没接上。 */
   diagnostics(): Record<string, string> {
-    const passages = document.querySelector('#passages') as HTMLElement | null
+    const root = resolvePassageRoot(document)
     return {
       modLoader: window.modUtils ? 'yes' : 'no',
       jquery: window.jQuery ? 'yes' : 'no',
       passage: String(window.State?.passage ?? '(none)'),
-      passagesNode: passages ? 'found' : 'missing',
-      textLength: String(passages?.innerText?.length ?? 0),
-      choices: String(document.querySelectorAll('#passages a.link-internal, #passages a[data-passage]').length),
+      passageRoot: describePassageRoot(document),
+      textLength: String((root?.textContent ?? '').trim().length),
+      choices: String(root?.querySelectorAll('a.link-internal, a[data-passage]').length ?? 0),
       connected: this.deps.connected() ? 'yes' : 'no',
       vocab: String(this.deps.book.list().length),
     }
@@ -804,6 +808,18 @@ function actions(...children: HTMLElement[]): HTMLDivElement {
   wrap.className = 'cb-actions'
   wrap.append(...children)
   return wrap
+}
+
+const OWN_UI_SELECTOR = '#cb-panel, #cb-card, #cb-badge, #cb-fatal'
+const INTERACTIVE_SELECTOR =
+  'a, button, input, select, textarea, label, summary, [contenteditable="true"], [role="button"], .link-internal, [data-passage]'
+
+function isOwnUi(el: Element | null | undefined): boolean {
+  return !!el && !!el.closest(OWN_UI_SELECTOR)
+}
+
+function isInteractive(el: Element | null | undefined): boolean {
+  return !!el && !!el.closest(INTERACTIVE_SELECTOR)
 }
 
 function rangeFromPoint(x: number, y: number): Range | null {
