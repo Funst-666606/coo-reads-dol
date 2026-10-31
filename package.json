@@ -16,7 +16,10 @@
     "pack:mod": "node packages/dol-mod/scripts/pack-mod.mjs",
     "sync:protocol": "node scripts/sync-protocol.mjs",
     "gen:describe": "node scripts/gen-describe.mjs",
-    "check:framework": "node scripts/fw-check.mjs"
+    "check:framework": "node scripts/fw-check.mjs",
+    "publish:npm:sfw": "node scripts/publish-npm.mjs --variant sfw",
+    "publish:npm:full": "node scripts/publish-npm.mjs --variant full --yes-i-know",
+    "publish:npm:all": "node scripts/publish-npm.mjs --variant both --yes-i-know"
   },
   "devDependencies": {
     "@types/jsdom": "^30.0.0",
