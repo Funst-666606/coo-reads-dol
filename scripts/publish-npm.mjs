@@ -118,9 +118,31 @@ for (const target of targets) {
     run('npm', publishArgs, pkgDir, env)
 
     if (!dryRun) {
-      console.log(`验证 ${pkg.name}@${pkg.version} …`)
-      run('npm', ['view', `${pkg.name}@${pkg.version}`, 'version'], root, env)
-      console.log(`已发布：https://www.npmjs.com/package/${pkg.name}/v/${pkg.version}`)
+      console.log(`已提交发布：${pkg.name}@${pkg.version}`)
+      console.log('等待 registry 同步（最多约 2 分钟）…')
+      let verified = false
+      for (let i = 0; i < 8; i++) {
+        const check = spawnSync('npm', ['view', `${pkg.name}@${pkg.version}`, 'version'], {
+          cwd: root,
+          env,
+          encoding: 'utf8',
+          shell: process.platform === 'win32',
+        })
+        if (check.status === 0) {
+          verified = true
+          break
+        }
+        await new Promise((r) => setTimeout(r, 15_000))
+      }
+      if (verified) {
+        console.log(`已发布：https://www.npmjs.com/package/${pkg.name}/v/${pkg.version}`)
+      } else {
+        console.warn(
+          `\n[publish-npm] 发布命令已成功，但 registry 尚未同步 ${pkg.name}@${pkg.version}。\n` +
+            '这不是失败：npm 页面通常几分钟内出现。稍后用下面命令确认：\n' +
+            `  npm view ${pkg.name} version\n`,
+        )
+      }
     }
   } finally {
     run('git', ['worktree', 'remove', '--force', dir], root)
