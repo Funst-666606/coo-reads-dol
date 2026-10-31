@@ -13,6 +13,8 @@ export interface DolConfig {
   adult: boolean
   /** 是否已完成首次「学英语 / 只想玩」选择。 */
   onboarded: boolean
+  /** 引导版本：老配置缺这个字段时强制重问一次。 */
+  onboardingVersion: number
   /** 本地端口；被占时向上顺延 9 个。 */
   port: number
   /** 默认模式。 */
@@ -31,6 +33,7 @@ export const DOL_DEFAULTS: DolConfig = {
   attitude: 'normal',
   adult: false,
   onboarded: false,
+  onboardingVersion: 1,
   port: 17321,
   mode: 'trigger',
   maxCommentsPerDay: 0,

@@ -71,6 +71,7 @@ export default {
 
 
         const playBox = document.createElement('div')
+        playBox.className = 'cb-play'
         const playSection = ui.section(t('玩法与态度', 'Play & attitude'))
         sheet.body.append(playSection, playBox)
 

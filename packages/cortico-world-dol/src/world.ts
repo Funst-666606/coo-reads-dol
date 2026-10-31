@@ -29,7 +29,7 @@ import {
 } from './protocol.ts'
 import { DolServer } from './server.ts'
 
-const VERSION = '0.1.10'
+const VERSION = '0.1.11'
 const MODES: readonly DolMode[] = ['proactive', 'trigger', 'passive']
 
 export interface DolWorldDeps {
@@ -63,6 +63,12 @@ export class DolWorld implements World {
   async start(host: WorldHost): Promise<void> {
     this.host = host
     const cfg = this.deps.cfg
+    // 老配置没有 onboardingVersion：强制重新问一次
+    if ((cfg.onboardingVersion ?? 0) < 1) {
+      cfg.onboarded = false
+      cfg.onboardingVersion = 1
+      this.deps.persist({ onboarded: false, onboardingVersion: 1 })
+    }
 
     this.mirror = new VocabMirror(join(this.deps.dataDir, 'dol-vocab.json'))
     this.mirror.load()

@@ -1,6 +1,6 @@
 {
   "name": "cortico-world-dol",
-  "version": "0.1.10",
+  "version": "0.1.11",
   "private": true,
   "type": "module",
   "description": "让 Coo 陪你玩 Degrees of Lewdity：可以学英语（查词、词根、整句讲解），也可以只陪玩。",
