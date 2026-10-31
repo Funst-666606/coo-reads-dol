@@ -1,0 +1,29 @@
+{
+  "name": "dol-with-coo",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "packageManager": "pnpm@11.22.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "typecheck": "node node_modules/typescript/bin/tsc -p tsconfig.json --noEmit",
+    "test": "node scripts/test.mjs",
+    "build": "node scripts/build-all.mjs",
+    "build:mod": "node packages/dol-mod/scripts/build.mjs",
+    "pack:mod": "node packages/dol-mod/scripts/pack-mod.mjs",
+    "sync:protocol": "node scripts/sync-protocol.mjs",
+    "gen:describe": "node scripts/gen-describe.mjs",
+    "check:framework": "node scripts/fw-check.mjs"
+  },
+  "devDependencies": {
+    "@types/jsdom": "^30.0.0",
+    "@types/node": "^22.20.4",
+    "@types/ws": "^8.18.1",
+    "fflate": "^0.8.2",
+    "jsdom": "^25.0.1",
+    "typescript": "^5.9.3"
+  }
+}

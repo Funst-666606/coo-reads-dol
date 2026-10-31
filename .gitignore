@@ -1,0 +1,16 @@
+﻿node_modules/
+.pnpm-store/
+dist/
+build/
+*.mod.zip
+*.tsbuildinfo
+.cache/
+**/data/dict.json
+**/data/ecdict.csv
+packages/dol-mod/src/generated/
+logs/
+*.log
+.DS_Store
+.npm-cache/
+release/
+参考资料/

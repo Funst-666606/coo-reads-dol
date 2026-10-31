@@ -1,0 +1,9 @@
+packages:
+  - 'packages/*'
+
+# Node 在 Windows 上从 junction 路径解析依赖时会去 nodoe_modules 根找；
+# hoisted 布局最省事，也方便 jsdom 这类多依赖的测试库。
+nodeLinker: hoisted
+
+allowBuilds:
+  esbuild: true

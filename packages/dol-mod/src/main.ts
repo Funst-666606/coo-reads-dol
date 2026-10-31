@@ -1,0 +1,422 @@
+/**
+ * CooBridge：DoL 英文原版的陪读模组。
+ *
+ * 这个文件只做三件事：
+ * 1. 确认环境（ModLoader 在、没装汉化），否则报错并完全停用；
+ * 2. 把当前 passage 的正文/选项/状态送给 Coopanion 里的 DoL World；
+ * 3. 维持连接、显示状态，并把 Coo 的答复留给后续的卡片 UI。
+ *
+ * 不碰存档、不改正文 DOM；所有失败都降级成「不可用」，不影响游戏。
+ */
+import { PROTOCOL_VERSION, decodeWorldMessage, encode, requestId, type ModMessage, type VocabCommand } from './protocol.ts'
+import { readScene as readSceneFrom, type Scene } from './scene.ts'
+import { pickGameVersion } from './version.ts'
+import { detectI18n as detectI18nFrom, errorText } from './env.ts'
+import { Ui } from './ui.ts'
+import { VocabBook } from './vocab.ts'
+import { JsonCache } from './cache.ts'
+import { localKV } from './store.ts'
+import { loadSettings, saveSettings } from './settings.ts'
+import { applyVocabCommand } from './vocab-commands.ts'
+
+const TAG = '[CooBridge]'
+const CLIENT_VERSION = '0.1.3'
+const SUPPORTED_GAME = '0.5.12.13'
+const PORT_BASE = 17321
+const PORT_COUNT = 10
+
+/** 端口可以被 window.CooBridgePort 或 localStorage 的 cb.port 覆盖（测试/端口冲突时用）。 */
+function readPortBase(): number {
+  try {
+    const forced = (window as unknown as { CooBridgePort?: unknown }).CooBridgePort
+    if (typeof forced === 'number' && Number.isInteger(forced) && forced > 0 && forced < 65536) return forced
+    const stored = Number(globalThis.localStorage?.getItem('cb.port'))
+    if (Number.isInteger(stored) && stored > 0 && stored < 65536) return stored
+  } catch {
+    /* localStorage 不可用就用默认 */
+  }
+  return PORT_BASE
+}
+
+declare global {
+  interface Window {
+    CooBridge?: unknown
+  }
+}
+
+type JQueryLike = (target: unknown) => { on(event: string, handler: () => void): void }
+
+/** 模组的脚本可能在 <head> 里执行，等 body 就绪再动 DOM。 */
+function whenBody(fn: () => void): void {
+  if (document.body) {
+    fn()
+    return
+  }
+  document.addEventListener('DOMContentLoaded', () => fn(), { once: true })
+}
+
+function boot(): void {
+  whenBody(() => {
+    try {
+      if (!window.modUtils) {
+        console.warn(`${TAG} 没找到 ModLoader，安静退出`)
+        return
+      }
+      const i18n = detectI18n()
+      if (i18n) {
+        showFatal(i18n)
+        return
+      }
+
+      const kv = localKV()
+      const book = new VocabBook(kv)
+      const settings = loadSettings(kv)
+      const bridge = new Bridge(readPortBase())
+      const ui = new Ui({
+        book,
+        sentenceCache: new JsonCache(kv, 'trans.v1'),
+        wordCache: new JsonCache(kv, 'word.v1'),
+        askSentence: (text) => bridge.askSentence(text),
+        askWord: (word, sentence) => bridge.askWord(word, sentence),
+        notifyVocab: (op, entry) => bridge.sendVocab(op, entry),
+        settings,
+        saveSettings: (next) => saveSettings(kv, next),
+        connected: () => bridge.isConnected(),
+        reconnect: () => bridge.reconnect(),
+      })
+      ui.mount()
+      bridge.setHooks({
+        onStatus: (status) => ui.setStatus(status),
+        onReply: (id, kind, payload) => ui.onReply(id, kind, payload),
+        onReplyFailed: (id, code) => ui.onReplyFailed(id, code),
+        onNotice: (level, text) => ui.toast(text, level === 'error'),
+        onError: (code, message) => ui.toast(errorText(code, message), true),
+        onCommand: (cmd) => {
+          const result = applyVocabCommand(book, cmd)
+          if (!result) return
+          bridge.sendVocab(result.op, result.entry)
+          ui.refresh()
+        },
+      })
+      const version = gameVersion()
+      if (version !== 'unknown' && version !== SUPPORTED_GAME) {
+        ui.toast(`游戏版本 ${version} 未验证（本模组针对 ${SUPPORTED_GAME}）`, true)
+      }
+      // StartConfig 可能比模组脚本晚一步就绪；3 秒后再核对一次。
+      if (version === 'unknown') {
+        window.setTimeout(() => {
+          const late = gameVersion()
+          if (late !== 'unknown' && late !== SUPPORTED_GAME) {
+            ui.toast(`游戏版本 ${late} 未验证（本模组针对 ${SUPPORTED_GAME}）`, true)
+          }
+        }, 3000)
+      }
+      bridge.start()
+      hookPassages(() => bridge.onPassage())
+      window.CooBridge = { bridge, ui, version: CLIENT_VERSION, diag: () => ui.diagnostics(), report: () => ui.diagnosticText() }
+      console.log(`${TAG} 已加载 ${CLIENT_VERSION}，游戏 ${gameVersion()}`)
+    } catch (err) {
+      console.error(`${TAG} 启动失败`, err)
+    }
+  })
+}
+
+// ── 环境检测 ──────────────────────────────────────────────────────────────
+
+function detectI18n(): string | null {
+  try {
+    const direct = window.modUtils?.getNowMainLanguage?.()
+    const manager = window.modSC2DataManager?.getLanguageManager?.()?.mainLanguage
+    return detectI18nFrom({
+      modNames: window.modUtils?.getModListName?.(),
+      mainLanguage: typeof direct === 'string' ? direct : manager,
+      documentLang: document.documentElement.lang,
+      sampleText: document.querySelector('#passages')?.textContent?.slice(0, 2000) ?? '',
+    })
+  } catch (err) {
+    console.warn(`${TAG} 语言检测出错，按英文继续`, err)
+    return null
+  }
+}
+
+function gameVersion(): string {
+  try {
+    return pickGameVersion({
+      startConfig: window.StartConfig,
+      variables: window.State?.variables as Record<string, unknown> | undefined,
+      storyText: window.Story?.get?.('Version')?.text,
+    })
+  } catch {
+    return 'unknown'
+  }
+}
+
+// ── passage 钩子 ──────────────────────────────────────────────────────────
+
+function hookPassages(onChange: () => void): void {
+  const $ = window.jQuery as JQueryLike | undefined
+  if ($) {
+    $(document).on(':passagedisplay', () => {
+      try {
+        onChange()
+      } catch (err) {
+        console.warn(`${TAG} passage 钩子出错`, err)
+      }
+    })
+    return
+  }
+  const target = document.querySelector('#passages')
+  if (!target) return
+  const mo = new MutationObserver(() => onChange())
+  mo.observe(target, { childList: true, subtree: true })
+}
+
+// ── 场景读取 ──────────────────────────────────────────────────────────────
+
+function readScene(): Scene | null {
+  try {
+    const passage = String(window.State?.passage ?? '')
+    if (!passage) return null
+    return readSceneFrom({
+      passage,
+      root: document.querySelector('#passages'),
+      variables: window.State?.variables as Record<string, unknown> | undefined,
+    })
+  } catch (err) {
+    console.warn(`${TAG} 读场景失败`, err)
+    return null
+  }
+}
+
+// ── 连接 ──────────────────────────────────────────────────────────────────
+
+type Status = 'idle' | 'connecting' | 'connected' | 'offline'
+
+interface BridgeHooks {
+  onStatus(status: Status): void
+  onReply(id: string, kind: 'sentence' | 'word', payload: unknown): void
+  onReplyFailed?(id: string, code: string): void
+  onNotice?(level: 'info' | 'warn' | 'error', text: string): void
+  onError?(code: string, message: string): void
+  onCommand?(cmd: VocabCommand): void
+}
+
+class Bridge {
+  private readonly portBase: number
+  private socket: WebSocket | null = null
+  private portIndex = 0
+  private retryTimer: ReturnType<typeof setTimeout> | null = null
+  private status: Status = 'idle'
+  private lastSceneKey = ''
+  private pending = new Map<string, 'sentence' | 'word'>()
+  private hooks: BridgeHooks | null = null
+
+  constructor(portBase: number) {
+    this.portBase = portBase
+  }
+
+  setHooks(hooks: BridgeHooks): void {
+    this.hooks = hooks
+  }
+
+  start(): void {
+    this.connect()
+  }
+
+  getStatus(): Status {
+    return this.status
+  }
+
+  isConnected(): boolean {
+    return this.status === 'connected'
+  }
+
+  onPassage(): void {
+    if (this.status !== 'connected') return
+    const scene = readScene()
+    if (!scene) return
+    const key = `${scene.passage}|${scene.text.length}|${scene.text.slice(0, 60)}`
+    if (key === this.lastSceneKey) return
+    this.lastSceneKey = key
+    this.send({
+      type: 'scene',
+      seq: Date.now(),
+      passage: scene.passage,
+      text: scene.text,
+      choices: scene.choices,
+      state: scene.state,
+      ...(scene.title ? { title: scene.title } : {}),
+    })
+  }
+
+  askSentence(text: string): string | null {
+    if (!this.isConnected()) return null
+    const id = requestId('s', text)
+    this.pending.set(id, 'sentence')
+    this.send({ type: 'sentence', id, text })
+    return id
+  }
+
+  askWord(word: string, sentence: string): string | null {
+    if (!this.isConnected()) return null
+    const id = requestId('w', `${word}|${sentence}`)
+    this.pending.set(id, 'word')
+    this.send({ type: 'word', id, word, sentence })
+    return id
+  }
+
+  sendVocab(op: 'add' | 'remove' | 'review' | 'mastered', entry: Record<string, unknown>): void {
+    if (!this.isConnected()) return
+    this.send({ type: 'vocab', op, entry })
+  }
+
+  reconnect(): void {
+    this.closeSocket()
+    this.portIndex = 0
+    this.connect()
+  }
+
+  // ── 内部 ────────────────────────────────────────────────────────────────
+
+  private connect(): void {
+    const port = this.portBase + this.portIndex
+    this.setStatus('connecting')
+    let settled = false
+    let ws: WebSocket
+    try {
+      ws = new WebSocket(`ws://127.0.0.1:${port}`)
+    } catch (err) {
+      console.warn(`${TAG} 建连接失败`, err)
+      this.scheduleRetry()
+      return
+    }
+    this.socket = ws
+
+    const fail = (): void => {
+      if (settled) return
+      settled = true
+      this.portIndex = (this.portIndex + 1) % PORT_COUNT
+      this.scheduleRetry(800)
+    }
+
+    ws.onopen = () => {
+      if (settled) return
+      settled = true
+      this.send({
+        type: 'hello',
+        protocol: PROTOCOL_VERSION,
+        client: { name: 'CooBridge', version: CLIENT_VERSION },
+        game: { version: gameVersion(), passage: String(window.State?.passage ?? ''), lang: 'en' },
+      })
+    }
+    ws.onmessage = (ev) => this.onMessage(String(ev.data))
+    ws.onerror = () => fail()
+    ws.onclose = () => {
+      if (this.socket === ws) this.socket = null
+      this.setStatus('offline')
+      this.pending.clear()
+      this.scheduleRetry(1500)
+    }
+  }
+
+  private closeSocket(): void {
+    if (this.retryTimer) {
+      clearTimeout(this.retryTimer)
+      this.retryTimer = null
+    }
+    try {
+      this.socket?.close()
+    } catch {
+      /* 忽略 */
+    }
+    this.socket = null
+  }
+
+  private scheduleRetry(delay = 1500): void {
+    if (this.retryTimer) return
+    this.retryTimer = setTimeout(() => {
+      this.retryTimer = null
+      if (this.status !== 'connected') this.connect()
+    }, delay)
+  }
+
+  private onMessage(raw: string): void {
+    let json: unknown
+    try {
+      json = JSON.parse(raw)
+    } catch {
+      return
+    }
+    const msg = decodeWorldMessage(json)
+    if (!msg) return
+    switch (msg.type) {
+      case 'hello_ok':
+        this.setStatus('connected')
+        this.onPassage()
+        return
+      case 'reply':
+        this.pending.delete(msg.id)
+        if (msg.ok && msg.payload) this.hooks?.onReply(msg.id, msg.kind, msg.payload)
+        else this.hooks?.onReplyFailed?.(msg.id, msg.error ?? 'unknown')
+        return
+      case 'notice':
+        console.info(`${TAG} ${msg.text}`)
+        this.hooks?.onNotice?.(msg.level, msg.text)
+        return
+      case 'error':
+        console.error(`${TAG} World 报错 ${msg.code}: ${msg.message}`)
+        this.hooks?.onError?.(msg.code, msg.message)
+        this.setStatus('offline')
+        return
+      case 'command':
+        this.hooks?.onCommand?.(msg.payload)
+        return
+      case 'pong':
+        return
+      default:
+        return
+    }
+  }
+
+  private send(msg: ModMessage): void {
+    const ws = this.socket
+    if (!ws || ws.readyState !== WebSocket.OPEN) return
+    try {
+      ws.send(encode(msg))
+    } catch (err) {
+      console.warn(`${TAG} 发送失败`, err)
+    }
+  }
+
+  private setStatus(next: Status): void {
+    if (this.status === next) return
+    this.status = next
+    this.hooks?.onStatus(next)
+  }
+}
+
+// ── 汉化拦截提示 ──────────────────────────────────────────────────────────
+
+function showFatal(message: string): void {
+  console.error(`${TAG} ${message}`)
+  document.getElementById('cb-fatal')?.remove()
+
+  // 顶部横幅，不是全屏遮罩：不能挡住 Mod 管理器。
+  const banner = document.createElement('div')
+  banner.id = 'cb-fatal'
+  banner.innerHTML = `<div class="cb-fatal-box">
+    <h2>CooBridge 已停用</h2>
+    <p>${escapeHtml(message)}</p>
+    <p class="cb-fatal-hint">按 <b>Alt+M</b> 打开 Mod 管理器，移除汉化模组后重新载入；关掉这个提示不影响游戏。</p>
+    <button type="button" class="cb-fatal-close">关闭提示</button>
+  </div>`
+  banner.querySelector('.cb-fatal-close')?.addEventListener('click', () => banner.remove())
+  document.body.appendChild(banner)
+}
+
+function escapeHtml(s: string): string {
+  return s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`)
+}
+
+// 必须放在文件末尾：Bridge 是 class，存在暂时性死区；在声明前调用会 ReferenceError。
+boot()

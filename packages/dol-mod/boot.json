@@ -1,0 +1,11 @@
+{
+  "name": "CooBridge",
+  "version": "0.1.3",
+  "styleFileList": ["CooBridge.css"],
+  "scriptFileList": ["CooBridge.js"],
+  "tweeFileList": [],
+  "imgFileList": [],
+  "additionFile": ["README.md"],
+  "dependenceInfo": [],
+  "addonPlugin": []
+}

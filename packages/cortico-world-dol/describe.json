@@ -1,0 +1,268 @@
+{
+  "tools": [
+    {
+      "name": "dol_teach",
+      "description": "回答玩家在 DoL 里点选的句子：回传中文翻译与 1–3 条讲解。必须原样带上请求 id；回传后游戏里会显示卡片。",
+      "parameters": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "学句请求的 id，从 dol.ask 事件里取。"
+          },
+          "translation": {
+            "type": "string",
+            "description": "自然、准确的中文翻译。"
+          },
+          "notes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "1–3 条讲解：语法点、搭配、语气。可空。"
+          }
+        },
+        "required": [
+          "id",
+          "translation"
+        ]
+      },
+      "tags": [
+        "write"
+      ],
+      "summary": "把中文翻译与讲解回传给游戏里的问句卡"
+    },
+    {
+      "name": "dol_define",
+      "description": "补全本地词典没收录的单词：释义、词根拆解、同根词。必须原样带上请求 id；没把握的词根不要编（省略即「无可靠词根」）。",
+      "parameters": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "查词请求的 id，从 dol.word_ask 事件里取。"
+          },
+          "lemma": {
+            "type": "string",
+            "description": "原形，如 running → run。"
+          },
+          "gloss": {
+            "type": "string",
+            "description": "简短中文释义，含词性。"
+          },
+          "phonetic": {
+            "type": "string",
+            "description": "音标，可空。"
+          },
+          "pos": {
+            "type": "string",
+            "description": "词性，如 n. / v. / adj.。"
+          },
+          "roots": {
+            "type": "array",
+            "description": "构词拆解；不确定就不要给。",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "part": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "prefix",
+                    "root",
+                    "suffix",
+                    "base"
+                  ]
+                },
+                "meaning": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "part",
+                "type",
+                "meaning"
+              ]
+            }
+          },
+          "family": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "2–4 个同根词。"
+          }
+        },
+        "required": [
+          "id",
+          "lemma",
+          "gloss"
+        ]
+      },
+      "tags": [
+        "write"
+      ],
+      "summary": "补全本地词典没收录的单词（释义、词根、同根词）"
+    },
+    {
+      "name": "dol_now",
+      "description": "看玩家现在在 DoL 的哪一幕、连接是否正常、今天问了多少。想接一句游戏的话时用。",
+      "parameters": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {}
+      },
+      "tags": [
+        "read"
+      ],
+      "summary": "当前场景、连接状态与今日统计"
+    },
+    {
+      "name": "dol_mode",
+      "description": "读取或切换陪读模式：proactive（主动）、trigger（触发）、passive（被动）。",
+      "parameters": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": [
+              "proactive",
+              "trigger",
+              "passive"
+            ],
+            "description": "不给则只读。"
+          }
+        },
+        "required": []
+      },
+      "tags": [
+        "write"
+      ],
+      "summary": "读取或切换主动/触发/被动模式"
+    },
+    {
+      "name": "dol_vocab",
+      "description": "查玩家的生词本镜像：stats=总数与到期数，list=最近加入，due=今天到期。想提醒复习、或聊到学习进度时用。",
+      "parameters": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "stats",
+              "list",
+              "due"
+            ],
+            "description": "默认 stats。"
+          },
+          "limit": {
+            "type": "integer",
+            "description": "最多列几个，默认 8。"
+          }
+        },
+        "required": []
+      },
+      "tags": [
+        "read"
+      ],
+      "summary": "生词本统计与今天到期的词"
+    },
+    {
+      "name": "dol_vocab_edit",
+      "description": "改玩家游戏内的生词本：add 需要 word + gloss；remove 用 lemma/word；mastered 标记是否掌握。只在玩家明确要求时用，别自作主张批量整理。",
+      "parameters": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "add",
+              "remove",
+              "mastered"
+            ],
+            "description": "要做的事。"
+          },
+          "word": {
+            "type": "string",
+            "description": "单词原样，如 incredible。"
+          },
+          "lemma": {
+            "type": "string",
+            "description": "原形；不给就按 word。"
+          },
+          "gloss": {
+            "type": "string",
+            "description": "add 必填：简短中文释义。"
+          },
+          "sentence": {
+            "type": "string",
+            "description": "add 可选：出处原句。"
+          },
+          "mastered": {
+            "type": "boolean",
+            "description": "mastered 用；默认 true。"
+          }
+        },
+        "required": [
+          "action"
+        ]
+      },
+      "tags": [
+        "write"
+      ]
+    }
+  ],
+  "events": [
+    {
+      "type": "dol.connected",
+      "description": "模组连上（玩家打开了游戏）",
+      "trigger": "piggyback"
+    },
+    {
+      "type": "dol.disconnected",
+      "description": "模组断开（游戏关了或模组停了）",
+      "trigger": "piggyback"
+    },
+    {
+      "type": "dol.scene",
+      "description": "切换场景：passage、正文、选项、地点/天数",
+      "trigger": "debounce"
+    },
+    {
+      "type": "dol.choice",
+      "description": "玩家点了一个选项",
+      "trigger": "debounce"
+    },
+    {
+      "type": "dol.ask",
+      "description": "玩家点了一句英文，请求翻译与讲解；需用 dol_teach 按 id 回传",
+      "trigger": "flush"
+    },
+    {
+      "type": "dol.word_ask",
+      "description": "本地词典未收录，请求补全；需用 dol_define 按 id 回传",
+      "trigger": "flush"
+    },
+    {
+      "type": "dol.vocab",
+      "description": "生词本增删或复习",
+      "trigger": "piggyback"
+    }
+  ],
+  "prompts": [
+    {
+      "key": "worlds.dol.env",
+      "title": "DoL 陪读环境提示",
+      "role": "envPrompt",
+      "content": "你是 Coo，正陪主人玩 **Degrees of Lewdity 英文原版**。游戏里装了 CooBridge，会把场景和主人的提问送到你这里。\n\n## 现在\n\n- 陪读模式：{{mode}}（proactive = 主动；trigger = 触发；passive = 被动）\n- 游戏连接：{{connected}}\n- 本地端口：{{port}}\n\n## 事件怎么读\n\n- `dol.scene`：换了一个场景（passage、正文、选项、地点/天数）。\n  - 主动模式：可以评论剧情、提醒复习；触发模式：最多接一句短评；被动模式：不要主动说话。\n- `dol.choice`：主人点了某个选项。不要评价他的选择，也不要替他后悔。\n- `dol.ask`：主人点了一句英文，等你翻译。**必须**调用 `dol_teach`（id 原样带上）回传中文翻译和 1–3 条讲解；只回传，不要在气泡里长篇解释。\n- `dol.word_ask`：本地词典没收录这个词。调用 `dol_define`（id 原样带上）回传原形、释义、音标、词根与同根词；没把握的词根不要编，省略即可。\n- `dol.vocab`：生词本有增减，知道就行，不必回应。\n\n## 工具\n\n- 想提醒复习、或聊到学习进度：调用 `dol_vocab`（`action=due` 看今天到期哪些词，`action=stats` 看总数）。\n  主动模式下可以偶尔提一句到期数，别催；被动模式不要主动提。\n- 想改玩家的生词本：只有玩家明确说「加进生词本 / 删掉这个词 / 我记住了」时才调用 `dol_vocab_edit`。\n  `add` 必须给中文释义；不要自作主张批量整理或清理词库。\n\n## 说话分寸\n\n- 短评一句话，像坐在旁边一起看的人：不剧透、不总结剧情、不替主人做决定。\n- 成人内容照常处理，但讲解要中性：解释语言现象（词、句、语气），不额外描写，不评判。\n- 讲解用中文，英文关键词保留原词（如 `had been waiting` 这种结构直接引用）。\n- 不确定的词源/词根就不给；宁可说「这个词没有可靠的词根拆解」。\n- 主人没问的时候，不要连续追问、不要催他做选择。\n"
+    }
+  ]
+}

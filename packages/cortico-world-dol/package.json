@@ -1,0 +1,37 @@
+{
+  "name": "cortico-world-dol",
+  "version": "0.1.2",
+  "private": true,
+  "type": "module",
+  "description": "把 Degrees of Lewdity 英文原版的场景交给 Coo，并在游戏里提供查词、词根与整句讲解",
+  "license": "MIT",
+  "main": "./src/index.ts",
+  "keywords": [
+    "cortico-world"
+  ],
+  "cortico": {
+    "kind": "world",
+    "api": 6,
+    "displayName": "DoL 陪读",
+    "webUiClient": "dist/webui.js",
+    "describe": "describe.json"
+  },
+  "files": [
+    "src",
+    "dist",
+    "describe.json",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "dependencies": {
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/ws": "^8.18.1",
+    "cortico": "^0.2.11"
+  },
+  "os": [
+    "win32"
+  ]
+}
