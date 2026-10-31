@@ -48,7 +48,7 @@ test('describe 里的工具与 tools() 名字一致，事件都有说明', () =>
   assert.deepEqual(declared, actual)
 
   const events = DOL.describe?.events ?? []
-  assert.equal(events.length, 7)
+  assert.equal(events.length, 8)
   for (const event of events) {
     assert.ok(event.type.startsWith('dol.'))
     const text = typeof event.description === 'string' ? event.description : (event.description.zh ?? event.description.en)

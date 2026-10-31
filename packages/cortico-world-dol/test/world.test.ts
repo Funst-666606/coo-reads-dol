@@ -98,7 +98,7 @@ test('World：事件、工具回传、生词镜像、模式切换', async () => 
   const tools = world.tools()
   assert.deepEqual(
     tools.map((t) => t.name).sort(),
-    ['dol_define', 'dol_mode', 'dol_now', 'dol_teach', 'dol_vocab', 'dol_vocab_edit'],
+    ['dol_define', 'dol_mode', 'dol_now', 'dol_setup', 'dol_teach', 'dol_vocab', 'dol_vocab_edit'],
   )
 
   const ws = await connect(`ws://127.0.0.1:${PORT}`)

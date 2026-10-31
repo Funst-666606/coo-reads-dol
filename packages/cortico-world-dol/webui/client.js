@@ -134,33 +134,6 @@ export default {
           )
         }
 
-        let onboarded = false
-        function showOnboard() {
-          if (onboarded) return
-          onboarded = true
-          const ov = document.createElement('div')
-          ov.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.55)'
-          const card = document.createElement('div')
-          card.style.cssText = 'max-width:360px;padding:20px;border-radius:14px;background:#1d1d22;color:#eee;border:1px solid #3a3a44;text-align:center'
-          card.innerHTML = '<h3 style="margin:0 0 8px">欲都孤鱼与多邻鱼</h3><p style="margin:0 0 14px;color:#bbb">要陪你学英语，还是只想一起玩？</p>'
-          const row = document.createElement('div')
-          row.style.cssText = 'display:flex;gap:8px;justify-content:center'
-          const learn = mkBtn(t('学英语', 'Learn English'), async () => {
-            await ctx.invoke('completeOnboarding', [true])
-            ov.remove()
-            await refresh()
-          })
-          const play = mkBtn(t('只想玩', 'Just play'), async () => {
-            await ctx.invoke('completeOnboarding', [false])
-            ov.remove()
-            await refresh()
-          })
-          row.append(learn, play)
-          card.append(row)
-          ov.append(card)
-          document.body.append(ov)
-        }
-
         const table = ui.table({
           head: [t('词', 'Word'), t('释义', 'Gloss'), t('到期', 'Due'), 'box', t('掌握', 'Mastered')],
           maxHeight: '260px',
@@ -202,7 +175,6 @@ export default {
             commentsText.textContent = `${status.todayComments}${status.commentCap > 0 ? ` / ${status.commentCap}` : ''}`
             vocabText.textContent = `${status.vocab.total}${t(' 词', '')} · ${status.vocab.due}${t(' 到期', ' due')}`
             renderPlay(status)
-            if (!status.onboarded) showOnboard()
             seg.setValue(status.mode)
             const current = MODES.find((m) => m.value === status.mode)
             modeNote.textContent = t(`当前：${current?.label ?? status.mode}`, `current: ${status.mode}`)

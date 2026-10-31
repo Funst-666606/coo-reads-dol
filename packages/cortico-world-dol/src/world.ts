@@ -29,7 +29,7 @@ import {
 } from './protocol.ts'
 import { DolServer } from './server.ts'
 
-const VERSION = '0.1.6'
+const VERSION = '0.1.7'
 const MODES: readonly DolMode[] = ['proactive', 'trigger', 'passive']
 
 export interface DolWorldDeps {
@@ -335,6 +335,8 @@ export class DolWorld implements World {
         return async (args) => this.handleVocab(args)
       case 'dol_vocab_edit':
         return async (args) => this.handleVocabEdit(args)
+      case 'dol_setup':
+        return async (args) => this.handleSetup(args)
       default:
         throw new Error(`未知工具：${name}`)
     }
@@ -466,6 +468,15 @@ export class DolWorld implements World {
     return { text: `已让游戏${verb}：${lemma || word}` }
   }
 
+  private handleSetup(args: Record<string, unknown>): string {
+    const learning = args['learning'] === true
+    this.deps.cfg.learning = learning
+    this.deps.cfg.onboarded = true
+    this.deps.persist({ learning, onboarded: true })
+    this.pushConfig()
+    return learning ? '已设置为学习英语模式' : '已设置为只陪玩模式'
+  }
+
   private describeNow(): string {
     const s = this.server?.status()
     if (!s?.connected) return '游戏现在没连上（玩家可能没开游戏，或没装模组）。'
@@ -494,6 +505,13 @@ export class DolWorld implements World {
     const now = Date.now()
     if (now - this.lastConnEventAt < 30_000) return
     this.lastConnEventAt = now
+    if (connected && !this.deps.cfg.onboarded) {
+      void this.pushEvent({
+        type: 'dol.onboarding',
+        text: '第一次连上。请先问主人：想学英语，还是只想一起玩？收到回答后调用 dol_setup 设置（learning=true/false）。',
+        trigger: 'piggyback',
+      })
+    }
     void this.pushEvent({
       type: connected ? 'dol.connected' : 'dol.disconnected',
       text: connected ? '玩家打开了 DoL，模组已连上，可以陪他一起玩了。' : 'DoL 已断开（游戏关了，或模组停了）。',
@@ -733,10 +751,24 @@ export const DOL_TOOL_DECLS: ReadonlyArray<Omit<ToolDef, 'handler'>> = [
       required: ['action'],
     },
   },
+  {
+    name: 'dol_setup',
+    description: '首次设置：Coo 问清玩家想学英语还是只想玩之后调用。learning=false 表示只陪玩。',
+    tags: ['write'],
+    parameters: {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        learning: { type: 'boolean', description: 'true = 学英语；false = 只陪玩' },
+      },
+      required: ['learning'],
+    },
+  },
 ]
 
 /** 全部事件（自描述用）。trigger 与运行时 pushEvent 保持一致。 */
 export const DOL_EVENTS = [
+  { type: 'dol.onboarding', description: '首次连接，Coo 应主动问玩家：学英语还是只陪玩；然后用 dol_setup 设置', trigger: 'piggyback' },
   { type: 'dol.connected', description: '模组连上（玩家打开了游戏）', trigger: 'piggyback' },
   { type: 'dol.disconnected', description: '模组断开（游戏关了或模组停了）', trigger: 'piggyback' },
   { type: 'dol.scene', description: '切换场景：passage、正文、选项、地点/天数', trigger: 'debounce' },

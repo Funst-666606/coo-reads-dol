@@ -1,4 +1,4 @@
-﻿/**
+/**
  * 入口级检查：模拟 Coopanion 的加载方式——只 import 包入口，不碰内部实现。
  * 目的：确保入口没有意外依赖 `cortico` 运行时（只允许 type import），
  * 且默认值覆盖了配置组里的每个键。
@@ -44,7 +44,7 @@ test('create() 能构造出 World，工具齐全', async () => {
   assert.equal(world.id, 'dol')
   assert.deepEqual(
     world.tools().map((t) => t.name).sort(),
-    ['dol_define', 'dol_mode', 'dol_now', 'dol_teach', 'dol_vocab', 'dol_vocab_edit'],
+    ['dol_define', 'dol_mode', 'dol_now', 'dol_setup', 'dol_teach', 'dol_vocab', 'dol_vocab_edit'],
   )
   const vars = await world.envPromptVars()
   assert.equal(vars?.['mode'], cfg.mode)
