@@ -83,6 +83,7 @@ for (const target of targets) {
 
   console.log(`\n=== ${target}：${expected}（分支 ${branch}）===`)
   rmSync(dir, { recursive: true, force: true })
+  spawnSync('git', ['worktree', 'prune'], { cwd: root, stdio: 'ignore', shell: process.platform === 'win32' })
   run('git', ['worktree', 'add', '--detach', dir, branch], root)
 
   try {
@@ -162,7 +163,16 @@ for (const target of targets) {
       }
     }
   } finally {
-    run('git', ['worktree', 'remove', '--force', dir], root)
+    spawnSync('git', ['worktree', 'remove', '--force', dir], {
+      cwd: root,
+      stdio: 'ignore',
+      shell: process.platform === 'win32',
+    })
+    spawnSync('git', ['worktree', 'prune'], {
+      cwd: root,
+      stdio: 'ignore',
+      shell: process.platform === 'win32',
+    })
     try {
       rmSync(npmrc, { force: true })
     } catch {
