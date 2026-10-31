@@ -1,4 +1,4 @@
-﻿/**
+/**
  * 端到端：jsdom 当游戏页，加载构建产物 dist/CooBridge.js，连真实的 DolWorld 服务。
  *
  * 覆盖：启动 → 握手 → 场景上报 → Alt+点击发学句请求 → dol_teach 回传 → 卡片显示译文。
@@ -147,7 +147,7 @@ test('构建产物 ↔ World：连接、场景、学句往返、卡片显示', {
   }
 })
 
-test('构建产物：检测到汉化包时不连接、显示停用提示', { skip: !hasBundle && 'dist/CooBridge.js 不存在，先构建' }, () => {
+test('构建产物：检测到汉化包时继续运行并切非学习模式', { skip: !hasBundle && 'dist/CooBridge.js 不存在，先构建' }, () => {
   const dom = new JSDOM(`<!doctype html><html lang="en"><body><div id="passages"><p>x</p></div></body></html>`, {
     url: 'http://localhost/',
     runScripts: 'outside-only',
@@ -162,13 +162,14 @@ test('构建产物：检测到汉化包时不连接、显示停用提示', { ski
   w.eval(bundle)
   try {
     const banner = w.document.getElementById('cb-fatal')
-    assert.ok(banner, '应显示停用提示')
-    assert.equal(w.document.getElementById('cb-badge'), null, '不应注入状态点')
-    assert.equal(w.document.getElementById('cb-panel'), null, '不应注入面板')
+    assert.ok(banner, '应显示提示')
+    assert.match(banner.textContent ?? '', /非学习模式/, '提示应说明已切非学习模式')
+    assert.doesNotMatch(banner.textContent ?? '', /已停用/, '不应再显示停用')
+    assert.ok(w.document.getElementById('cb-badge'), '仍应注入状态点')
+    assert.ok(w.document.getElementById('cb-panel'), '仍应注入面板')
 
-    // 横幅必须能关掉；不能是全屏遮罩，否则会挡住 Mod 管理器
     const close = banner.querySelector('.cb-fatal-close')
-    assert.ok(close, '停用提示必须有关闭按钮')
+    assert.ok(close, '提示必须有关闭按钮')
     close.dispatchEvent(new w.MouseEvent('click', { bubbles: true }))
     assert.equal(w.document.getElementById('cb-fatal'), null, '点关闭后应移除')
   } finally {
