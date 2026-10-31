@@ -1,5 +1,10 @@
 # 变更日志
 
+## 0.1.13 - 2026-11-01
+
+- 扩展页简介改为完整 Markdown：具体功能、使用方法、实验性说明。
+- 标签：game / external-setup / high-cost / experimental。
+
 ## 0.1.12 - 2026-11-01
 
 - 元数据：作者、仓库、图标、CC BY-NC-SA 4.0 许可；npm 发布准备。
