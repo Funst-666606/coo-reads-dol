@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 游戏内 UI：单词卡、问句卡、生词/复习/设置面板。
  *
  * 约束：
@@ -965,7 +965,7 @@ function actions(...children: HTMLElement[]): HTMLDivElement {
 
 const OWN_UI_SELECTOR = '#cb-panel, #cb-card, #cb-badge, #cb-fatal'
 const INTERACTIVE_SELECTOR =
-  'a, button, input, select, textarea, label, summary, [contenteditable="true"], [role="button"], .link-internal, [data-passage]'
+  'a, button, input, select, textarea, label, summary, [contenteditable="true"], [role="button"], .link-internal'
 
 function isOwnUi(el: Element | null | undefined): boolean {
   return !!el && !!el.closest(OWN_UI_SELECTOR)

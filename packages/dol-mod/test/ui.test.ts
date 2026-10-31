@@ -14,7 +14,7 @@ const TEXT = 'It was an incredible zzzz night.'
 
 function setupDom(): { dom: JSDOM; textNode: Text; setCaret: (offset: number) => void } {
   const dom = new JSDOM(
-    `<!doctype html><html><body><div id="passages"><p id="p">${TEXT}</p></div><div id="sidebar"><p id="side">A strange whisper in the dark.</p><button id="menu">Menu</button></div></body></html>`,
+    `<!doctype html><html><body><div id="passages"><div id="passage-bedroom" data-passage="Bedroom"><div id="passage-content"><p id="p">${TEXT}</p></div></div></div><div id="sidebar"><p id="side">A strange whisper in the dark.</p><button id="menu">Menu</button></div></body></html>`,
     { url: 'http://localhost/' },
   )
   const { window } = dom
