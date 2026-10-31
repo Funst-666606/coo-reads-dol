@@ -30,7 +30,7 @@ import {
 import { DolServer } from './server.ts'
 import { SFW } from './variant.ts'
 
-const VERSION = '0.1.3'
+const VERSION = '0.1.4'
 const MODES: readonly DolMode[] = ['proactive', 'trigger', 'passive']
 
 export interface DolWorldDeps {
@@ -186,17 +186,23 @@ export class DolWorld implements World {
               },
               'worlds.dol.attitude': {
                 type: 'string',
-                enum: ['strict', 'normal', 'subtle', 'erotic', 'lewd'],
-                title: zh ? '评论态度' : 'Comment attitude',
-                description: zh ? '严谨 / 正常 / 含蓄 / 色情 / 淫乱（后两档需开成人内容）' : 'strict / normal / subtle / erotic / lewd',
+                enum: SFW ? ['strict'] : ['strict', 'normal', 'subtle', 'erotic', 'lewd'],
+                title: zh ? '评论态度（学习版锁定）' : 'Comment attitude (locked)',
+                description: zh
+                  ? '学习版固定为「严谨」，只做语言与剧情的中性说明。'
+                  : 'Fixed to Strict in the learning build.',
                 'x-hot': true,
               },
-              'worlds.dol.adult': {
-                type: 'boolean',
-                title: zh ? '成人内容' : 'Adult content',
-                description: zh ? '开启后才可用「色情 / 淫乱」两档。' : 'Required for erotic/lewd.',
-                'x-hot': true,
-              },
+              ...(SFW
+                ? {}
+                : {
+                    'worlds.dol.adult': {
+                      type: 'boolean',
+                      title: zh ? '成人内容' : 'Adult content',
+                      description: zh ? '开启后才可用「色情 / 淫乱」两档。' : 'Required for erotic/lewd.',
+                      'x-hot': true,
+                    },
+                  }),
               'worlds.dol.mode': {
                 type: 'string',
                 enum: ['proactive', 'trigger', 'passive'],
