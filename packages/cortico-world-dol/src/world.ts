@@ -22,6 +22,7 @@ import {
   type RootPart,
   type SceneMsg,
   type SentenceMsg,
+  type StatusMsg,
   type VocabCommand,
   type VocabMsg,
   type WordMsg,
@@ -30,7 +31,7 @@ import {
 import { DolServer } from './server.ts'
 import { SFW } from './variant.ts'
 
-const VERSION = '0.1.9'
+const VERSION = '0.1.10'
 const MODES: readonly DolMode[] = ['proactive', 'trigger', 'passive']
 
 export interface DolWorldDeps {
@@ -49,6 +50,7 @@ export class DolWorld implements World {
   private lastSceneKey = ''
   private lastScene: SceneMsg | null = null
   private lastConnEventAt = 0
+  private statusPending = new Map<string, { resolve: (text: string) => void; timer: ReturnType<typeof setTimeout> }>()
   private commentDay = ''
   private commentsToday = 0
   private mirror: VocabMirror | null = null
@@ -84,6 +86,7 @@ export class DolWorld implements World {
       onAsk: (m) => this.onAsk(m),
       onWordAsk: (m) => this.onWordAsk(m),
       onVocab: (m) => this.onVocab(m),
+      onStatus: (m) => this.onStatus(m),
       onConnection: (connected) => this.onConnection(connected),
       onLearning: (learning) => {
         this.deps.cfg.learning = learning
@@ -353,6 +356,8 @@ export class DolWorld implements World {
         return async (args) => this.handleMode(args)
       case 'dol_vocab':
         return async (args) => this.handleVocab(args)
+      case 'dol_status':
+        return async () => this.handleStatus()
       case 'dol_vocab_edit':
         return async (args) => this.handleVocabEdit(args)
       case 'dol_setup':
@@ -488,6 +493,24 @@ export class DolWorld implements World {
     return { text: `已让游戏${verb}：${lemma || word}` }
   }
 
+  private async handleStatus(): Promise<string | ToolOutcome> {
+    const server = this.server
+    if (!server?.connected) return { text: '游戏没连上，读不到当前状态', failed: true }
+    const id = `st-${Date.now().toString(36)}`
+    return new Promise((resolve) => {
+      const timer = setTimeout(() => {
+        this.statusPending.delete(id)
+        resolve({ text: '游戏没有在 20 秒内回应状态请求', failed: true })
+      }, 20_000)
+      this.statusPending.set(id, { resolve: (text) => resolve(text), timer })
+      if (!server.sendStatusRequest(id)) {
+        clearTimeout(timer)
+        this.statusPending.delete(id)
+        resolve({ text: '状态请求发送失败', failed: true })
+      }
+    })
+  }
+
   private handleSetup(args: Record<string, unknown>): string {
     const learning = args['learning'] === true
     this.deps.cfg.learning = learning
@@ -553,6 +576,25 @@ export class DolWorld implements World {
     const sidebar = m.sidebar ? `\n[侧栏] ${m.sidebar}` : ''
     const text = `[DoL 场景] ${m.passage}${where ? `（${where}）` : ''}：${m.text}${sidebar}${choices ? `\n选项：${choices}` : ''}`
     void this.pushEvent({ type: 'dol.scene', text, meta: { passage: m.passage, seq: m.seq }, trigger: 'debounce' })
+  }
+
+  private onStatus(m: StatusMsg): void {
+    if (m.id) {
+      const pending = this.statusPending.get(m.id)
+      if (pending) {
+        clearTimeout(pending.timer)
+        this.statusPending.delete(m.id)
+        pending.resolve(m.text)
+        return
+      }
+    }
+    if (this.deps.cfg.mode === 'passive') return
+    if (!this.allowComment()) return
+    void this.pushEvent({
+      type: 'dol.day',
+      text: `[DoL 每日状态] 第 ${m.day} 天\n${m.text}`,
+      trigger: 'piggyback',
+    })
   }
 
   private onChoice(m: ChoiceMsg): void {
@@ -785,10 +827,17 @@ export const DOL_TOOL_DECLS: ReadonlyArray<Omit<ToolDef, 'handler'>> = [
       required: ['learning'],
     },
   },
+  {
+    name: 'dol_status',
+    description: '实时读取游戏的角色特性、社交、特质与日志页面，用于回答当前状态。',
+    tags: ['read'],
+    parameters: { type: 'object', additionalProperties: false, properties: {}, required: [] },
+  },
 ]
 
 /** 全部事件（自描述用）。trigger 与运行时 pushEvent 保持一致。 */
 export const DOL_EVENTS = [
+  { type: 'dol.day', description: '过完一天（$days 变化），附带特性/社交/特质/日志快照', trigger: 'piggyback' },
   { type: 'dol.onboarding', description: '首次连接，Coo 应主动问玩家：学英语还是只陪玩；然后用 dol_setup 设置', trigger: 'piggyback' },
   { type: 'dol.connected', description: '模组连上（玩家打开了游戏）', trigger: 'piggyback' },
   { type: 'dol.disconnected', description: '模组断开（游戏关了或模组停了）', trigger: 'piggyback' },

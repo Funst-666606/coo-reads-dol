@@ -238,9 +238,27 @@
       "tags": [
         "write"
       ]
+    },
+    {
+      "name": "dol_status",
+      "description": "实时读取游戏的角色特性、社交、特质与日志页面，用于回答当前状态。",
+      "parameters": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {},
+        "required": []
+      },
+      "tags": [
+        "read"
+      ]
     }
   ],
   "events": [
+    {
+      "type": "dol.day",
+      "description": "过完一天（$days 变化），附带特性/社交/特质/日志快照",
+      "trigger": "piggyback"
+    },
     {
       "type": "dol.onboarding",
       "description": "首次连接，Coo 应主动问玩家：学英语还是只陪玩；然后用 dol_setup 设置",

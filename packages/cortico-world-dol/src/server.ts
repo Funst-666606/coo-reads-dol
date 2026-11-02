@@ -16,6 +16,7 @@ import {
   type SentenceMsg,
   type SentencePayload,
   type ConfigMsg,
+  type StatusMsg,
   type VocabMsg,
   type VocabCommand,
   type WordMsg,
@@ -37,6 +38,7 @@ export interface DolServerOptions {
   onAsk(m: SentenceMsg): void
   onWordAsk(m: WordMsg): void
   onVocab(m: VocabMsg): void
+  onStatus?(m: StatusMsg): void
   onConnection(connected: boolean): void
   onLearning?(learning: boolean): void
 }
@@ -137,6 +139,14 @@ export class DolServer {
     const ws = this.socket
     if (!ws || ws.readyState !== OPEN) return false
     this.send(msg)
+    return true
+  }
+
+  /** 请求游戏实时重读二级页面。 */
+  sendStatusRequest(id: string): boolean {
+    const ws = this.socket
+    if (!ws || ws.readyState !== OPEN) return false
+    this.send({ type: 'status_request', id })
     return true
   }
 
@@ -266,6 +276,9 @@ export class DolServer {
         return
       case 'command':
         if (msg.command === 'learning') this.opts.onLearning?.(msg.payload.learning)
+        return
+      case 'status':
+        this.opts.onStatus?.(msg)
         return
       case 'vocab':
         this.opts.onVocab(msg)

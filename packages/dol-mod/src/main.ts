@@ -14,13 +14,14 @@ import { pickGameVersion } from './version.ts'
 import { detectI18n as detectI18nFrom, errorText } from './env.ts'
 import { Ui } from './ui.ts'
 import { VocabBook } from './vocab.ts'
+import { captureStatusPages } from './pages.ts'
 import { JsonCache } from './cache.ts'
 import { localKV } from './store.ts'
 import { loadSettings, saveSettings } from './settings.ts'
 import { applyVocabCommand } from './vocab-commands.ts'
 
 const TAG = '[CooBridge]'
-const CLIENT_VERSION = '0.1.17'
+const CLIENT_VERSION = '0.1.18'
 const SUPPORTED_GAME = '0.5.12.13'
 const PORT_BASE = 17321
 const PORT_COUNT = 10
@@ -89,6 +90,11 @@ function boot(): void {
         onNotice: (level, text) => ui.toast(text, level === 'error'),
         onError: (code, message) => ui.toast(errorText(code, message), true),
         onConfig: (cfg) => ui.setLearning(cfg.enabled && cfg.learning),
+        onStatusRequest: (id) => {
+          void captureStatusPages()
+            .then((text) => bridge.sendStatus(currentDay(), text ?? '', id))
+            .catch(() => bridge.sendStatus(currentDay(), '', id))
+        },
         onCommand: (cmd) => {
           const result = applyVocabCommand(book, cmd)
           if (!result) return
@@ -203,6 +209,7 @@ interface BridgeHooks {
   onError?(code: string, message: string): void
   onCommand?(cmd: VocabCommand): void
   onConfig?(cfg: { enabled: boolean; learning: boolean; attitude: string; adult: boolean }): void
+  onStatusRequest?(id: string): void
 }
 
 class Bridge {
@@ -274,6 +281,11 @@ class Bridge {
   /** 立即发一次心跳（切回前台/获得焦点时用，避免后台节流导致 World 判超时）。 */
   ping(): void {
     this.send({ type: 'ping' })
+  }
+
+  sendStatus(day: number, text: string, id?: string): void {
+    if (!this.isConnected()) return
+    this.send({ type: 'status', day, text, ...(id ? { id } : {}) })
   }
 
   /** 让 World 切换学习/非学习模式。 */
@@ -476,3 +488,9 @@ function escapeHtml(s: string): string {
 
 // 必须放在文件末尾：Bridge 是 class，存在暂时性死区；在声明前调用会 ReferenceError。
 boot()
+
+/** 当前游戏天数（$days）。 */
+function currentDay(): number {
+  const days = (window.State?.variables as Record<string, unknown> | undefined)?.['days']
+  return typeof days === 'number' ? days : 0
+}

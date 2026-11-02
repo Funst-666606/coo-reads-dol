@@ -69,6 +69,21 @@ export interface SceneMsg {
   sidebar?: string
 }
 
+/** 模组抓取的二级页面快照（特性/社交/特质/日志）。 */
+export interface StatusMsg {
+  type: 'status'
+  /** 有值表示回应 World 的实时请求。 */
+  id?: string
+  day: number
+  text: string
+}
+
+/** World 请求模组实时重读页面。 */
+export interface StatusRequestMsg {
+  type: 'status_request'
+  id: string
+}
+
 export interface ChoiceMsg {
   type: 'choice'
   index: number
@@ -133,6 +148,7 @@ export interface PingMsg {
 export type ModMessage =
   | LearningCommandMsg
   | HelloMsg
+  | StatusMsg
   | SceneMsg
   | ChoiceMsg
   | SentenceMsg
@@ -191,7 +207,7 @@ export interface PongMsg {
   type: 'pong'
 }
 
-export type WorldMessage = HelloOkMsg | ReplyMsg | NoticeMsg | ErrorMsg | PongMsg | CommandMsg | ConfigMsg
+export type WorldMessage = HelloOkMsg | ReplyMsg | NoticeMsg | ErrorMsg | PongMsg | CommandMsg | ConfigMsg | StatusRequestMsg
 
 // ── 解析 ──────────────────────────────────────────────────────────────────
 
@@ -265,6 +281,15 @@ export function decodeModMessage(raw: unknown): ModMessage | null {
       if (!isRecord(payload) || typeof payload['learning'] !== 'boolean') return null
       return { type: 'command', command: 'learning', payload: { learning: payload['learning'] } }
     }
+    case 'status': {
+      if (typeof raw['day'] !== 'number' || typeof raw['text'] !== 'string') return null
+      return {
+        type: 'status',
+        day: raw['day'],
+        text: raw['text'],
+        ...(typeof raw['id'] === 'string' ? { id: raw['id'] } : {}),
+      }
+    }
     case 'vocab': {
       const op = raw['op']
       if (op !== 'add' && op !== 'remove' && op !== 'review' && op !== 'mastered') return null
@@ -278,7 +303,7 @@ export function decodeModMessage(raw: unknown): ModMessage | null {
   }
 }
 
-const WORLD_TYPES = new Set<string>(['hello_ok', 'reply', 'notice', 'error', 'pong', 'command', 'config'])
+const WORLD_TYPES = new Set<string>(['hello_ok', 'reply', 'notice', 'error', 'pong', 'command', 'config', 'status_request'])
 
 /** 接收方的形状校验：World 侧发来的消息。 */
 export function decodeWorldMessage(raw: unknown): WorldMessage | null {
@@ -329,6 +354,8 @@ export function decodeWorldMessage(raw: unknown): WorldMessage | null {
     }
     case 'pong':
       return { type: 'pong' }
+    case 'status_request':
+      return typeof raw['id'] === 'string' ? { type: 'status_request', id: raw['id'] } : null
     case 'config':
       if (typeof raw['enabled'] !== 'boolean' || typeof raw['learning'] !== 'boolean') return null
       return {
