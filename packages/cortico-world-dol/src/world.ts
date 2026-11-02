@@ -31,7 +31,7 @@ import {
 import { DolServer } from './server.ts'
 import { SFW } from './variant.ts'
 
-const VERSION = '0.1.19'
+const VERSION = '0.1.20'
 const MODES: readonly DolMode[] = ['proactive', 'trigger', 'passive']
 
 export interface DolWorldDeps {
@@ -491,6 +491,7 @@ export class DolWorld implements World {
     const server = this.server
     if (!server?.connected) return { text: '游戏没连上，读不到当前状态', failed: true }
     const id = `st-${Date.now().toString(36)}`
+    this.host?.log.info('dol: Coo 请求实时状态', { id })
     return new Promise((resolve) => {
       const timer = setTimeout(() => {
         this.statusPending.delete(id)
