@@ -37,6 +37,12 @@ function overlay(doc: Document): HTMLElement | null {
 export function readSidebarText(doc: Document): string {
   const sidebar = doc.querySelector<HTMLElement>('#sidebar, #story-caption, .sidebar')
   if (!sidebar) return ''
+  const tabs = Array.from(doc.querySelectorAll<HTMLElement>('button, a, [role="button"]'))
+    .map((el) => (el.textContent ?? '').trim().toUpperCase())
+    .filter((text) =>
+      ['CHARACTERISTICS', 'SOCIAL', 'TRAITS', 'JOURNAL', 'STATS', 'FEATS', 'OPTIONS', 'SAVES'].includes(text),
+    )
+  const uniqueTabs = [...new Set(tabs)]
   const clone = sidebar.cloneNode(true) as HTMLElement
   clone.querySelectorAll('a, button, [role="button"], #menu, #story-menu').forEach((n) => n.remove())
   const raw = (clone.innerText ?? clone.textContent ?? '').replace(/\u00a0/g, ' ')
@@ -44,8 +50,12 @@ export function readSidebarText(doc: Document): string {
     .split(/\n+/)
     .map(clean)
     .filter(Boolean)
-    .filter((line) => !/^(Pain|Arousal|Fatigue|Stress|Trauma|Control|Allure)\s*[::]/i.test(line))
-  return lines.length ? `[侧栏] ${lines.join(' | ').slice(0, 1200)}` : ''
+    .filter((line) => !/^[A-Z]?(Pain|Arousal|Fatigue|Stress|Trauma|Control|Allure)\s*[::]/i.test(line))
+    .filter((line) => !/\d+\.\d{2}/.test(line))
+  const body = lines.join(' | ').slice(0, 1500)
+  return [uniqueTabs.length ? `[页签] ${uniqueTabs.join(' / ')}` : '', body ? `[侧栏] ${body}` : '']
+    .filter(Boolean)
+    .join('\n')
 }
 
 /** 左侧常驻状态：Pain / Arousal / Fatigue / Stress / Trauma / Control / Allure。 */
@@ -111,7 +121,7 @@ export async function captureStatusPages(doc: Document = document): Promise<stri
       failures.push(`${label}（页面未渲染或内容为空）`)
       continue
     }
-    const text = clean(box.textContent ?? '').slice(0, 1200)
+    const text = clean(box.textContent ?? '').slice(0, 2200)
     parts.push(`[${label}] ${text}`)
     const close = doc.querySelector<HTMLElement>(
       '#customOverlayClose, .customOverlayClose, [data-overlay-close]',
@@ -126,5 +136,5 @@ export async function captureStatusPages(doc: Document = document): Promise<stri
   return [readVitals(doc), readSidebarText(doc), header, ...parts]
     .filter(Boolean)
     .join('\n')
-    .slice(0, 6000)
+    .slice(0, 8000)
 }
