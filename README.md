@@ -314,6 +314,10 @@ node scripts/fw-check.mjs
 - `main`：完整版；
 - `sfw`：学习版（评论锁定严谨、开发者模式不可用）。
 
+## 更新日志
+
+每次 Release 的改动见 [CHANGELOG.md](CHANGELOG.md)；发布流程见 [docs/发布流程.md](docs/发布流程.md)。
+
 ## 版本
 
 | 组件 | 当前 |
