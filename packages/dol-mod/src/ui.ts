@@ -221,8 +221,25 @@ export class Ui {
     const bounds = wordBounds(text, offset)
     if (!bounds) return null
     const word = text.slice(bounds.start, bounds.end)
-    const sentence = sentenceAround(text, bounds.start, bounds.end) ?? text.trim()
+    const sentence = this.sentenceAt(node, bounds.start, bounds.end) ?? text.trim()
     return { word, sentence }
+  }
+
+  /** 从点击位置取整句：跨 span/文本节点，按块级容器拼接。 */
+  private sentenceAt(node: Node, start: number, end: number): string | null {
+    const parent = (node as Text).parentElement
+    const block = parent?.closest('p, li, td, blockquote, section, div') ?? parent
+    if (!block) return sentenceAround(node.textContent ?? '', start, end)
+    try {
+      const pre = document.createRange()
+      pre.setStart(block, 0)
+      pre.setEnd(node, Math.max(0, start))
+      const full = block.textContent ?? ''
+      const base = pre.toString().length
+      return sentenceAround(full, base, base + Math.max(0, end - start))
+    } catch {
+      return sentenceAround(node.textContent ?? '', start, end)
+    }
   }
 
   private openSentenceAt(x: number, y: number): void {
