@@ -20,7 +20,9 @@ export const DOL: WorldDefinition<DolConfig> = {
     if (!MODES.includes(cfg.mode)) {
       throw new Error(`worlds.dol.mode 只能是 ${MODES.join(' / ')}`)
     }
-    if (cfg.sceneTextLimit < 200) throw new Error('worlds.dol.sceneTextLimit 至少 200')
+    if (cfg.sceneTextLimit !== 0 && cfg.sceneTextLimit < 200) {
+      throw new Error('worlds.dol.sceneTextLimit 为 0（不限）或至少 200')
+    }
     if (cfg.replyTimeoutSec < 5) throw new Error('worlds.dol.replyTimeoutSec 至少 5')
   },
   create: (ctx) =>

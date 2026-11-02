@@ -81,7 +81,7 @@ export function readScene(src: SceneSource): Scene | null {
 
   const scene: Scene = {
     passage,
-    text: text.slice(0, src.limit ?? 4000),
+    text: src.limit && src.limit > 0 ? text.slice(0, src.limit) : text,
     choices,
     state: readState(src.variables),
   }

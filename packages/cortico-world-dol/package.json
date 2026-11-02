@@ -1,6 +1,6 @@
 {
   "name": "cortico-world-dol-sfw",
-  "version": "0.1.10",
+  "version": "0.1.11",
   "type": "module",
   "description": "让 Coo 陪你玩 Degrees of Lewdity 学英语：点词看释义与词根，点句翻译讲解，生词本按间隔复习。学习版锁定「严谨」评论，只做语言与剧情的中性说明；开发者模式与其他模式不可用。完整说明见项目主页。",
   "license": "CC-BY-NC-SA-4.0",

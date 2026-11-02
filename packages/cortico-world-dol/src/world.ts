@@ -31,7 +31,7 @@ import {
 import { DolServer } from './server.ts'
 import { SFW } from './variant.ts'
 
-const VERSION = '0.1.10'
+const VERSION = '0.1.11'
 const MODES: readonly DolMode[] = ['proactive', 'trigger', 'passive']
 
 export interface DolWorldDeps {
@@ -226,8 +226,8 @@ export class DolWorld implements World {
               'worlds.dol.sceneTextLimit': {
                 type: 'integer',
                 title: zh ? '场景文本上限' : 'Scene text limit',
-                description: zh ? '发给 Coo 的正文字符数' : 'Characters sent to Coo',
-                minimum: 200,
+                description: zh ? '发给 Coo 的正文字符数；0 = 不限' : 'Characters sent to Coo; 0 = unlimited',
+                minimum: 0,
                 maximum: 12000,
                 'x-suffix': zh ? '字' : 'chars',
                 'x-hot': true,
@@ -572,9 +572,11 @@ export class DolWorld implements World {
     const where = [m.state.location, m.state.day ? `第 ${m.state.day} 天` : '', m.state.time]
       .filter(Boolean)
       .join(' ')
+    const limit = this.deps.cfg.sceneTextLimit
+    const sceneText = limit > 0 ? m.text.slice(0, limit) : m.text
     const choices = m.choices.map((c) => `${c.index}. ${c.label}`).join(' / ')
     const sidebar = m.sidebar ? `\n[侧栏] ${m.sidebar}` : ''
-    const text = `[DoL 场景] ${m.passage}${where ? `（${where}）` : ''}：${m.text}${sidebar}${choices ? `\n选项：${choices}` : ''}`
+    const text = `[DoL 场景] ${m.passage}${where ? `（${where}）` : ''}：${sceneText}${sidebar}${choices ? `\n选项：${choices}` : ''}`
     void this.pushEvent({ type: 'dol.scene', text, meta: { passage: m.passage, seq: m.seq }, trigger: 'debounce' })
   }
 
