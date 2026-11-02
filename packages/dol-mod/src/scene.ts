@@ -7,6 +7,8 @@ export interface Scene {
   text: string
   choices: Choice[]
   state: SceneState
+  /** 侧栏摘要：时间、钱、穿着、状态、提示。 */
+  sidebar?: string
 }
 
 export interface SceneSource {
@@ -15,6 +17,8 @@ export interface SceneSource {
   variables?: Record<string, unknown>
   /** 正文字符上限。 */
   limit?: number
+  /** 页面文档，用于读侧栏。 */
+  doc?: ParentNode | null
 }
 
 /**
@@ -81,6 +85,8 @@ export function readScene(src: SceneSource): Scene | null {
     choices,
     state: readState(src.variables),
   }
+  const sidebar = readSidebar(src.doc)
+  if (sidebar) scene.sidebar = sidebar
   const title = src.root.querySelector('.passage-title, h1')
   if (title?.textContent) scene.title = title.textContent.trim().slice(0, 120)
   return scene
@@ -121,4 +127,17 @@ function normalize(text: string): string {
     .replace(/[ \t]+\n/g, '\n')
     .replace(/\n{3,}/g, '\n\n')
     .trim()
+}
+
+/** 侧栏摘要：去掉导航与按钮，只留时间/钱/穿着/状态/提示。 */
+export function readSidebar(doc: ParentNode | null | undefined): string | undefined {
+  if (!doc) return undefined
+  const el = doc.querySelector('#sidebar, #story-caption, .sidebar')
+  if (!el) return undefined
+  const clone = el.cloneNode(true) as HTMLElement
+  for (const sel of ['#menu', '#story-menu', 'a', 'button', '[role="button"]', 'input', 'select']) {
+    clone.querySelectorAll(sel).forEach((node) => node.remove())
+  }
+  const text = normalize(clone.textContent ?? '').slice(0, 1500)
+  return text || undefined
 }

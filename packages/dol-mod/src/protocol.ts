@@ -68,6 +68,8 @@ export interface SceneMsg {
   text: string
   choices: Choice[]
   state: SceneState
+  /** 游戏侧栏摘要：时间、钱、穿着、状态、提示。 */
+  sidebar?: string
 }
 
 export interface ChoiceMsg {
@@ -243,6 +245,7 @@ export function decodeModMessage(raw: unknown): ModMessage | null {
           .map((c) => ({ index: c['index'] as number, label: c['label'] as string })),
         state: isRecord(raw['state']) ? (raw['state'] as SceneState) : {},
         ...(typeof raw['title'] === 'string' ? { title: raw['title'] } : {}),
+        ...(typeof raw['sidebar'] === 'string' ? { sidebar: raw['sidebar'] } : {}),
       }
     }
     case 'choice':

@@ -30,7 +30,7 @@ import {
 import { DolServer } from './server.ts'
 import { SFW } from './variant.ts'
 
-const VERSION = '0.1.8'
+const VERSION = '0.1.9'
 const MODES: readonly DolMode[] = ['proactive', 'trigger', 'passive']
 
 export interface DolWorldDeps {
@@ -550,7 +550,8 @@ export class DolWorld implements World {
       .filter(Boolean)
       .join(' ')
     const choices = m.choices.map((c) => `${c.index}. ${c.label}`).join(' / ')
-    const text = `[DoL 场景] ${m.passage}${where ? `（${where}）` : ''}：${m.text}${choices ? `\n选项：${choices}` : ''}`
+    const sidebar = m.sidebar ? `\n[侧栏] ${m.sidebar}` : ''
+    const text = `[DoL 场景] ${m.passage}${where ? `（${where}）` : ''}：${m.text}${sidebar}${choices ? `\n选项：${choices}` : ''}`
     void this.pushEvent({ type: 'dol.scene', text, meta: { passage: m.passage, seq: m.seq }, trigger: 'debounce' })
   }
 
