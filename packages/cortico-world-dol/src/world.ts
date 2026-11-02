@@ -31,7 +31,7 @@ import {
 import { DolServer } from './server.ts'
 import { SFW } from './variant.ts'
 
-const VERSION = '0.1.12'
+const VERSION = '0.1.13'
 const MODES: readonly DolMode[] = ['proactive', 'trigger', 'passive']
 
 export interface DolWorldDeps {
