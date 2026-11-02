@@ -33,6 +33,21 @@ function overlay(doc: Document): HTMLElement | null {
   return doc.querySelector<HTMLElement>('#customOverlay, .customOverlay')
 }
 
+/** 侧栏其余内容：时间、钱、穿着、提醒、底部 tip。去掉导航与七项状态。 */
+export function readSidebarText(doc: Document): string {
+  const sidebar = doc.querySelector<HTMLElement>('#sidebar, #story-caption, .sidebar')
+  if (!sidebar) return ''
+  const clone = sidebar.cloneNode(true) as HTMLElement
+  clone.querySelectorAll('a, button, [role="button"], #menu, #story-menu').forEach((n) => n.remove())
+  const raw = (clone.innerText ?? clone.textContent ?? '').replace(/\u00a0/g, ' ')
+  const lines = raw
+    .split(/\n+/)
+    .map(clean)
+    .filter(Boolean)
+    .filter((line) => !/^(Pain|Arousal|Fatigue|Stress|Trauma|Control|Allure)\s*[::]/i.test(line))
+  return lines.length ? `[侧栏] ${lines.join(' | ').slice(0, 1200)}` : ''
+}
+
 /** 左侧常驻状态：Pain / Arousal / Fatigue / Stress / Trauma / Control / Allure。 */
 export function readVitals(doc: Document): string {
   const sidebar = doc.querySelector<HTMLElement>('#sidebar, #story-caption, .sidebar')
@@ -108,5 +123,8 @@ export async function captureStatusPages(doc: Document = document): Promise<stri
   const header = `[抓取] ${parts.length}/${STATUS_PAGES.length} 页${
     failures.length ? `；未取到：${failures.join('；')}` : ''
   }`
-  return [readVitals(doc), header, ...parts].filter(Boolean).join('\n').slice(0, 5000)
+  return [readVitals(doc), readSidebarText(doc), header, ...parts]
+    .filter(Boolean)
+    .join('\n')
+    .slice(0, 6000)
 }
