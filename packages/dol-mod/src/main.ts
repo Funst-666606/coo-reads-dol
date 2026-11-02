@@ -21,7 +21,7 @@ import { loadSettings, saveSettings } from './settings.ts'
 import { applyVocabCommand } from './vocab-commands.ts'
 
 const TAG = '[CooBridge]'
-const CLIENT_VERSION = '0.1.19'
+const CLIENT_VERSION = '0.1.20'
 const SUPPORTED_GAME = '0.5.12.13'
 const PORT_BASE = 17321
 const PORT_COUNT = 10
@@ -420,6 +420,12 @@ class Bridge {
         console.error(`${TAG} World 报错 ${msg.code}: ${msg.message}`)
         this.hooks?.onError?.(msg.code, msg.message)
         this.setStatus('offline')
+        return
+      case 'config':
+        this.hooks?.onConfig?.(msg)
+        return
+      case 'status_request':
+        this.hooks?.onStatusRequest?.(msg.id)
         return
       case 'command':
         this.hooks?.onCommand?.(msg.payload)
