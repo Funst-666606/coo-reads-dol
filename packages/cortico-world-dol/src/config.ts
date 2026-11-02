@@ -25,6 +25,10 @@ export interface DolConfig {
   maxCommentsPerDay: number
   /** 发给 Coo 的场景正文上限（字符）。 */
   sceneTextLimit: number
+  /** 状态页单页上限；0 = 不限。 */
+  statusPageLimit: number
+  /** 状态页总上限；0 = 不限。 */
+  statusTotalLimit: number
   /** 等 Coo 回传讲解的超时（秒）。 */
   replyTimeoutSec: number
 }
@@ -40,6 +44,8 @@ export const DOL_DEFAULTS: DolConfig = {
   mode: 'trigger',
   maxCommentsPerDay: 0,
   sceneTextLimit: 0,
+  statusPageLimit: 0,
+  statusTotalLimit: 0,
   replyTimeoutSec: 20,
 }
 
