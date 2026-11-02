@@ -21,7 +21,7 @@ import { loadSettings, saveSettings } from './settings.ts'
 import { applyVocabCommand } from './vocab-commands.ts'
 
 const TAG = '[CooBridge]'
-const CLIENT_VERSION = '0.1.27'
+const CLIENT_VERSION = '0.1.28'
 const SUPPORTED_GAME = '0.5.12.13'
 const PORT_BASE = 17321
 const PORT_COUNT = 10
@@ -63,6 +63,8 @@ function boot(): void {
       const kv = localKV()
       const book = new VocabBook(kv)
       const settings = loadSettings(kv)
+      let statusPageLimit = 0
+      let statusTotalLimit = 0
       const bridge = new Bridge(readPortBase(settings.port))
       const ui = new Ui({
         book,
@@ -89,9 +91,13 @@ function boot(): void {
         onReplyFailed: (id, code) => ui.onReplyFailed(id, code),
         onNotice: (level, text) => ui.toast(text, level === 'error'),
         onError: (code, message) => ui.toast(errorText(code, message), true),
-        onConfig: (cfg) => ui.setLearning(cfg.enabled && cfg.learning),
+        onConfig: (cfg) => {
+          statusPageLimit = cfg.statusPageLimit ?? 0
+          statusTotalLimit = cfg.statusTotalLimit ?? 0
+          ui.setLearning(cfg.enabled && cfg.learning)
+        },
         onStatusRequest: (id) => {
-          void captureStatusPages()
+          void captureStatusPages({ pageLimit: statusPageLimit, totalLimit: statusTotalLimit })
             .then((text) => bridge.sendStatus(currentDay(), text ?? '', id))
             .catch(() => bridge.sendStatus(currentDay(), '', id))
         },
@@ -208,7 +214,14 @@ interface BridgeHooks {
   onNotice?(level: 'info' | 'warn' | 'error', text: string): void
   onError?(code: string, message: string): void
   onCommand?(cmd: VocabCommand): void
-  onConfig?(cfg: { enabled: boolean; learning: boolean; attitude: string; adult: boolean }): void
+  onConfig?(cfg: {
+    enabled: boolean
+    learning: boolean
+    attitude: string
+    adult: boolean
+    statusPageLimit?: number
+    statusTotalLimit?: number
+  }): void
   onStatusRequest?(id: string): void
 }
 

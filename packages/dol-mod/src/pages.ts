@@ -95,7 +95,15 @@ async function waitFor<T>(get: () => T | null, timeoutMs: number): Promise<T | n
  * 依次点开页面、读文本、关闭。
  * 返回带统计的文字（即使 0 页也返回原因），方便 Coo 判断是没打开还是抓取失败。
  */
-export async function captureStatusPages(doc: Document = document): Promise<string> {
+export interface CaptureLimits {
+  pageLimit?: number
+  totalLimit?: number
+}
+
+export async function captureStatusPages(
+  limits: CaptureLimits = {},
+  doc: Document = document,
+): Promise<string> {
   const open = overlay(doc)
   if (open && isVisible(open)) {
     return '[抓取] 0/4 页；原因：游戏里已有浮层打开，本次跳过，未打扰玩家'
@@ -136,5 +144,5 @@ export async function captureStatusPages(doc: Document = document): Promise<stri
   return [readVitals(doc), readSidebarText(doc), header, ...parts]
     .filter(Boolean)
     .join('\n')
-    .slice(0, 8000)
+    .slice(0, limits.totalLimit && limits.totalLimit > 0 ? limits.totalLimit : undefined)
 }

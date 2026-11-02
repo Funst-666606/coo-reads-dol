@@ -31,7 +31,7 @@ import {
 import { DolServer } from './server.ts'
 import { SFW } from './variant.ts'
 
-const VERSION = '0.1.21'
+const VERSION = '0.1.22'
 const MODES: readonly DolMode[] = ['proactive', 'trigger', 'passive']
 
 export interface DolWorldDeps {
@@ -223,6 +223,22 @@ export class DolWorld implements World {
                 description: zh ? '发给 Coo 的正文字符数；0 = 不限' : 'Characters sent to Coo; 0 = unlimited',
                 minimum: 0,
                 maximum: 12000,
+                'x-suffix': zh ? '字' : 'chars',
+                'x-hot': true,
+              },
+              'worlds.dol.statusPageLimit': {
+                type: 'integer',
+                title: zh ? '状态页单页上限' : 'Status page limit',
+                description: zh ? '每个二级页面最多抓多少字；0 = 不限' : 'Characters per page; 0 = unlimited',
+                minimum: 0,
+                'x-suffix': zh ? '字' : 'chars',
+                'x-hot': true,
+              },
+              'worlds.dol.statusTotalLimit': {
+                type: 'integer',
+                title: zh ? '状态抓取总上限' : 'Status total limit',
+                description: zh ? '四页合计最多多少字；0 = 不限' : 'Total characters across pages; 0 = unlimited',
+                minimum: 0,
                 'x-suffix': zh ? '字' : 'chars',
                 'x-hot': true,
               },
@@ -534,6 +550,8 @@ export class DolWorld implements World {
       learning: this.deps.cfg.learning,
       attitude: effectiveAttitude(this.deps.cfg),
       adult: this.deps.cfg.adult,
+      statusPageLimit: this.deps.cfg.statusPageLimit,
+      statusTotalLimit: this.deps.cfg.statusTotalLimit,
     })
   }
 
