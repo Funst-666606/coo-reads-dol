@@ -333,7 +333,7 @@ export class DolServer {
   private tick(): void {
     const ws = this.socket
     if (!ws || ws.readyState !== OPEN) return
-    if (Date.now() - this.lastSeen > 60_000) {
+    if (Date.now() - this.lastSeen > 120_000) {
       this.opts.log.warn('dol: 60 秒没有消息，断开')
       try {
         ws.terminate()

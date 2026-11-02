@@ -20,7 +20,7 @@ import { loadSettings, saveSettings } from './settings.ts'
 import { applyVocabCommand } from './vocab-commands.ts'
 
 const TAG = '[CooBridge]'
-const CLIENT_VERSION = '0.1.15'
+const CLIENT_VERSION = '0.1.16'
 const SUPPORTED_GAME = '0.5.12.13'
 const PORT_BASE = 17321
 const PORT_COUNT = 10
@@ -270,6 +270,11 @@ class Bridge {
     return id
   }
 
+  /** 立即发一次心跳（切回前台/获得焦点时用，避免后台节流导致 World 判超时）。 */
+  ping(): void {
+    this.send({ type: 'ping' })
+  }
+
   /** 让 World 切换学习/非学习模式。 */
   setLearning(learning: boolean): void {
     if (!this.isConnected()) return
@@ -354,7 +359,7 @@ class Bridge {
   /** 每 20 秒发一次 ping，避免被 World 的 60 秒静默判定踢掉。 */
   private startHeartbeat(): void {
     this.stopHeartbeat()
-    this.heartbeat = setInterval(() => this.send({ type: 'ping' }), 20_000)
+    this.heartbeat = setInterval(() => this.send({ type: 'ping' }), 15_000)
   }
 
   private stopHeartbeat(): void {
