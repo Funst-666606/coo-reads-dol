@@ -47,7 +47,7 @@ test('构建产物 ↔ World：连接、场景、学句往返、卡片显示', {
   rmSync(DIR, { recursive: true, force: true })
   mkdirSync(DIR, { recursive: true })
 
-  const cfg: DolConfig = { ...DOL_DEFAULTS, port: 17321 }
+  const cfg: DolConfig = { ...DOL_DEFAULTS, enabled: true, port: 17321 }
   const pushed: Pushed[] = []
   const world = new DolWorld({ cfg, dataDir: DIR, timezone: 'Asia/Taipei', persist: () => {} })
   await world.start(makeHost(pushed))
