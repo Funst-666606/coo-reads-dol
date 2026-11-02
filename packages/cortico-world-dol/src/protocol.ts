@@ -226,6 +226,8 @@ const MOD_TYPES = new Set<string>([
   'word',
   'vocab',
   'ping',
+  'status',
+  'command',
 ])
 
 /** 只做形状级校验：type 合法、关键字段类型对。业务校验由接收方做。 */
