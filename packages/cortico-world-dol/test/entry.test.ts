@@ -44,7 +44,7 @@ test('create() 能构造出 World，工具齐全', async () => {
   assert.equal(world.id, 'dol')
   assert.deepEqual(
     world.tools().map((t) => t.name).sort(),
-    ['dol_define', 'dol_mode', 'dol_now', 'dol_setup', 'dol_teach', 'dol_vocab', 'dol_vocab_edit'],
+    ['dol_define', 'dol_mode', 'dol_now', 'dol_setup', 'dol_status', 'dol_teach', 'dol_vocab', 'dol_vocab_edit'],
   )
   const vars = await world.envPromptVars()
   assert.equal(vars?.['mode'], cfg.mode)
