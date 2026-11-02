@@ -33,6 +33,25 @@ function overlay(doc: Document): HTMLElement | null {
   return doc.querySelector<HTMLElement>('#customOverlay, .customOverlay')
 }
 
+/** 左侧常驻状态：Pain / Arousal / Fatigue / Stress / Trauma / Control / Allure。 */
+export function readVitals(doc: Document): string {
+  const sidebar = doc.querySelector<HTMLElement>('#sidebar, #story-caption, .sidebar')
+  if (!sidebar) return ''
+  const clone = sidebar.cloneNode(true) as HTMLElement
+  clone.querySelectorAll('a, button, [role="button"], #menu, #story-menu').forEach((n) => n.remove())
+  const raw = (clone.innerText ?? clone.textContent ?? '').replace(/\u00a0/g, ' ')
+  const labels = ['Pain', 'Arousal', 'Fatigue', 'Stress', 'Trauma', 'Control', 'Allure']
+  const found: string[] = []
+  for (const line of raw.split(/\n+/)) {
+    const m = line.match(/^\s*(Pain|Arousal|Fatigue|Stress|Trauma|Control|Allure)\s*[::]\s*(.+)$/i)
+    if (!m) continue
+    const label = labels.find((l) => l.toLowerCase() === (m[1] ?? '').toLowerCase()) ?? m[1]
+    const value = (m[2] ?? '').trim()
+    if (value) found.push(`${label}: ${value}`)
+  }
+  return found.length ? `[状态] ${found.join(' | ')}` : ''
+}
+
 function content(doc: Document): HTMLElement | null {
   return doc.querySelector<HTMLElement>('#customOverlayContent, .customOverlayContent')
 }
@@ -89,5 +108,5 @@ export async function captureStatusPages(doc: Document = document): Promise<stri
   const header = `[抓取] ${parts.length}/${STATUS_PAGES.length} 页${
     failures.length ? `；未取到：${failures.join('；')}` : ''
   }`
-  return [header, ...parts].join('\n').slice(0, 5000)
+  return [readVitals(doc), header, ...parts].filter(Boolean).join('\n').slice(0, 5000)
 }
