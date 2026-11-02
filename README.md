@@ -230,7 +230,7 @@ World 配置在 `worlds.dol.*`：
 | `port` | `17321` | 游戏连接的端口，被占用时向上试 9 个 |
 | `mode` | `trigger` | 主动 / 触发 / 被动 |
 | `maxCommentsPerDay` | `0` | 0 = 不限 |
-| `sceneTextLimit` | `4000` | 发给 Coo 的正文字符上限 |
+| `sceneTextLimit` | `0` | 发给 Coo 的正文字符上限；0 = 不限 |
 | `replyTimeoutSec` | `20` | 等 Coo 回传的超时秒数 |
 
 学习版会把 `attitude` 强制为 `strict`，并隐藏 `adult` 项。
