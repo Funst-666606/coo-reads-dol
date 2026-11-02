@@ -248,7 +248,7 @@ export class DolServer {
         type: 'hello_ok',
         protocol: PROTOCOL_VERSION,
         world: { version: this.opts.version },
-        features: ['scene', 'sentence', 'word', 'vocab'],
+        features: ['scene', 'sentence', 'word', 'vocab', 'status', 'sidebar'],
       })
       this.setConnected(true)
       this.opts.log.info('dol: 模组已连接', { game: msg.game.version, client: msg.client.version })
