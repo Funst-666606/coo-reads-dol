@@ -14,12 +14,27 @@ function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms))
 }
 
+function isVisible(el: Element | null): boolean {
+  if (!el) return false
+  const style = getComputedStyle(el as HTMLElement)
+  return style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0'
+}
+
 function findButton(doc: ParentNode, name: string): HTMLElement | null {
-  for (const el of Array.from(doc.querySelectorAll<HTMLElement>('button, a, [role="button"]'))) {
+  const upper = name.toUpperCase()
+  for (const el of Array.from(doc.querySelectorAll<HTMLElement>('button, a, [role="button"], [data-passage]'))) {
     const text = (el.textContent ?? '').trim().toUpperCase()
-    if (text === name || text.startsWith(`${name} `)) return el
+    if (text === upper || text.startsWith(`${upper} `)) return el
   }
   return null
+}
+
+function overlay(doc: Document): HTMLElement | null {
+  return doc.querySelector<HTMLElement>('#customOverlay, .customOverlay')
+}
+
+function content(doc: Document): HTMLElement | null {
+  return doc.querySelector<HTMLElement>('#customOverlayContent, .customOverlayContent')
 }
 
 async function waitFor<T>(get: () => T | null, timeoutMs: number): Promise<T | null> {
@@ -33,26 +48,46 @@ async function waitFor<T>(get: () => T | null, timeoutMs: number): Promise<T | n
 }
 
 /**
- * 依次点开页面、读文本、关闭。游戏里已有浮层时直接放弃，避免打断玩家。
- * 返回 null 表示这次没抓成（不重试）。
+ * 依次点开页面、读文本、关闭。
+ * 返回带统计的文字（即使 0 页也返回原因），方便 Coo 判断是没打开还是抓取失败。
  */
-export async function captureStatusPages(doc: Document = document): Promise<string | null> {
-  if (doc.querySelector('#customOverlay, .customOverlay')) return null
+export async function captureStatusPages(doc: Document = document): Promise<string> {
+  const open = overlay(doc)
+  if (open && isVisible(open)) {
+    return '[抓取] 0/4 页；原因：游戏里已有浮层打开，本次跳过，未打扰玩家'
+  }
+
   const parts: string[] = []
+  const failures: string[] = []
+
   for (const [name, label] of STATUS_PAGES) {
     const button = findButton(doc, name)
-    if (!button) continue
+    if (!button) {
+      failures.push(`${label}（未找到按钮）`)
+      continue
+    }
     button.click()
-    const content = await waitFor(
-      () => doc.querySelector<HTMLElement>('#customOverlayContent, .customOverlayContent'),
-      1200,
+    const box = await waitFor(() => {
+      const el = content(doc)
+      if (!el || !isVisible(el)) return null
+      const text = clean(el.textContent ?? '')
+      return text.length >= 10 ? el : null
+    }, 1500)
+    if (!box) {
+      failures.push(`${label}（页面未渲染或内容为空）`)
+      continue
+    }
+    const text = clean(box.textContent ?? '').slice(0, 1200)
+    parts.push(`[${label}] ${text}`)
+    const close = doc.querySelector<HTMLElement>(
+      '#customOverlayClose, .customOverlayClose, [data-overlay-close]',
     )
-    if (!content) continue
-    const text = clean(content.textContent ?? '').slice(0, 1200)
-    if (text) parts.push(`[${label}] ${text}`)
-    const close = doc.querySelector<HTMLElement>('#customOverlayClose, .customOverlayClose')
     close?.click()
     await sleep(80)
   }
-  return parts.length > 0 ? parts.join('\n').slice(0, 4500) : null
+
+  const header = `[抓取] ${parts.length}/${STATUS_PAGES.length} 页${
+    failures.length ? `；未取到：${failures.join('；')}` : ''
+  }`
+  return [header, ...parts].join('\n').slice(0, 5000)
 }
