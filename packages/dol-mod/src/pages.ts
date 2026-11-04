@@ -146,3 +146,20 @@ export async function captureStatusPages(
     .join('\n')
     .slice(0, limits.totalLimit && limits.totalLimit > 0 ? limits.totalLimit : undefined)
 }
+
+/** 读取侧栏数字状态（用于计算变化量，不直接展示绝对值）。 */
+export function readNumericVitals(doc: Document = document): Record<string, number> {
+  const sidebar = doc.querySelector<HTMLElement>('#sidebar, #story-caption, .sidebar')
+  if (!sidebar) return {}
+  const text = (sidebar.innerText ?? sidebar.textContent ?? '').replace(/\u00a0/g, ' ')
+  const out: Record<string, number> = {}
+  const re = /([A-Z]?)(Pain|Arousal|Fatigue|Stress|Trauma|Control|Allure)\s*:\s*([\d.]+)/g
+  for (const m of text.matchAll(re)) {
+    const label = m[2]
+    const value = Number(m[3])
+    if (label && Number.isFinite(value)) out[label] = value
+  }
+  const money = text.match(/£\s*(\d+(?:\.\d+)?)/)
+  if (money) out['Money'] = Number(money[1])
+  return out
+}

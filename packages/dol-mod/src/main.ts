@@ -14,14 +14,14 @@ import { pickGameVersion } from './version.ts'
 import { detectI18n as detectI18nFrom, errorText } from './env.ts'
 import { Ui } from './ui.ts'
 import { VocabBook } from './vocab.ts'
-import { captureStatusPages } from './pages.ts'
+import { captureStatusPages, readNumericVitals } from './pages.ts'
 import { JsonCache } from './cache.ts'
 import { localKV } from './store.ts'
 import { loadSettings, saveSettings } from './settings.ts'
 import { applyVocabCommand } from './vocab-commands.ts'
 
 const TAG = '[CooBridge]'
-const CLIENT_VERSION = '0.1.29'
+const CLIENT_VERSION = '0.1.30'
 const SUPPORTED_GAME = '0.5.12.13'
 const PORT_BASE = 17321
 const PORT_COUNT = 10
@@ -294,6 +294,11 @@ class Bridge {
   /** 立即发一次心跳（切回前台/获得焦点时用，避免后台节流导致 World 判超时）。 */
   ping(): void {
     this.send({ type: 'ping' })
+  }
+
+  sendChoice(index: number, label: string): void {
+    if (!this.isConnected()) return
+    this.send({ type: 'choice', index, label })
   }
 
   sendStatus(day: number, text: string, id?: string): void {

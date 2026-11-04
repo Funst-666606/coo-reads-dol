@@ -67,6 +67,10 @@ export interface SceneMsg {
   state: SceneState
   /** 游戏侧栏摘要：时间、钱、穿着、状态、提示。 */
   sidebar?: string
+  /** 上一页 passage。 */
+  previous?: string
+  /** 与上一次场景相比的变化（压力/钱等）。 */
+  delta?: string
 }
 
 /** 模组抓取的二级页面快照（特性/社交/特质/日志）。 */
@@ -263,6 +267,8 @@ export function decodeModMessage(raw: unknown): ModMessage | null {
         state: isRecord(raw['state']) ? (raw['state'] as SceneState) : {},
         ...(typeof raw['title'] === 'string' ? { title: raw['title'] } : {}),
         ...(typeof raw['sidebar'] === 'string' ? { sidebar: raw['sidebar'] } : {}),
+        ...(typeof raw['previous'] === 'string' ? { previous: raw['previous'] } : {}),
+        ...(typeof raw['delta'] === 'string' ? { delta: raw['delta'] } : {}),
       }
     }
     case 'choice':
