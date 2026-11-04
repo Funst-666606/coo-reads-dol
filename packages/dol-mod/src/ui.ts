@@ -136,9 +136,9 @@ export class Ui {
       return
     }
     const data = payload as WordPayload
-    this.deps.wordCache.set(id, data)
     if (this.current?.kind === 'word') {
       const state = this.current
+      this.deps.wordCache.set(wordCacheKey(state.word), data)
       this.current = { ...state, coo: this.viewFromPayload(data, state.word, state.sentence), pending: false }
       this.renderCurrent()
     }
@@ -259,8 +259,7 @@ export class Ui {
     const hit = lookup(word)
     const local = hit ? this.localView(hit, sentence) : null
 
-    const id = requestId('w', `${word}|${sentence}`)
-    const cached = this.deps.wordCache.get(id)
+    const cached = this.deps.wordCache.get(wordCacheKey(word))
     const coo = cached ? this.viewFromPayload(cached, word, sentence) : null
 
     this.current = { kind: 'word', word, sentence, local, coo, pending: false }
@@ -1080,4 +1079,9 @@ function download(filename: string, content: string, mime: string): void {
   a.download = filename
   a.click()
   window.setTimeout(() => URL.revokeObjectURL(url), 2000)
+}
+
+/** Coo 单词补充按单词缓存：换场景/重开后仍能带出。 */
+function wordCacheKey(word: string): string {
+  return `w|${word.trim().toLowerCase()}`
 }
