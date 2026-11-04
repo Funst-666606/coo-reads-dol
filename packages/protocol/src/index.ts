@@ -127,6 +127,8 @@ export interface ConfigMsg {
   learning: boolean
   attitude: string
   adult: boolean
+  statusPageLimit?: number
+  statusTotalLimit?: number
 }
 
 export interface LearningCommandMsg {
