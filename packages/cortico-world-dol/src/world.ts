@@ -31,7 +31,7 @@ import {
 import { DolServer } from './server.ts'
 import { SFW } from './variant.ts'
 
-const VERSION = '0.1.25'
+const VERSION = '0.1.26'
 const UI_LANG_NAMES: Record<string, string> = {
   'zh-CN': '简体中文',
   'zh-TW': '正體中文',
@@ -301,6 +301,24 @@ export class DolWorld implements World {
         const learning = args[0] === true
         this.deps.cfg.learning = learning
         this.deps.persist({ learning })
+        this.pushConfig()
+        return this.statusSnapshot()
+      }
+      case 'setUiLang': {
+        const lang = typeof args[0] === 'string' ? args[0] : ''
+        if (!['zh-CN', 'zh-TW', 'en', 'ru', 'ja'].includes(lang)) {
+          throw new Error(`未知界面语言 ${lang}`)
+        }
+        this.deps.cfg.uiLang = lang as never
+        this.deps.persist({ uiLang: lang as never })
+        this.pushConfig()
+        return this.statusSnapshot()
+      }
+      case 'setTargetLang': {
+        const target = typeof args[0] === 'string' ? args[0] : ''
+        if (!['en', 'zh'].includes(target)) throw new Error(`未知目标语言 ${target}`)
+        this.deps.cfg.targetLang = target as never
+        this.deps.persist({ targetLang: target as never })
         this.pushConfig()
         return this.statusSnapshot()
       }

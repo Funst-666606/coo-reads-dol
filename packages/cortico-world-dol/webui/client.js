@@ -35,6 +35,8 @@ export default {
         }
         let lang = initial?.uiLang || (ctx.language === 'en' ? 'en' : 'zh-CN')
         const t = (cn, en) => translate(lang, cn, en)
+        const statusLang = () => initial?.uiLang || lang
+        const statusTarget = () => initial?.targetLang || 'en'
 
         const sheet = ui.sheet({
           title: t('DoL 陪读', 'DoL tutor'),
@@ -61,6 +63,58 @@ export default {
             { k: t('生词镜像', 'Vocab mirror'), v: vocabText },
           ]),
         )
+
+        const mkSelect = (label, options, value, onChange) => {
+          const line = document.createElement('div')
+          line.className = 'cb-lang-row'
+          const text = document.createElement('span')
+          text.textContent = label
+          const select = document.createElement('select')
+          for (const [code, name] of options) {
+            const option = document.createElement('option')
+            option.value = code
+            option.textContent = name
+            if (code === value) option.selected = true
+            select.append(option)
+          }
+          select.addEventListener('change', () => onChange(select.value))
+          line.append(text, select)
+          return { line, select }
+        }
+
+        const uiLang = mkSelect(
+          t('界面语言', 'Interface language'),
+          [
+            ['zh-CN', '简体中文'],
+            ['zh-TW', '正體中文'],
+            ['en', 'English'],
+            ['ru', 'Русский'],
+            ['ja', '日本語'],
+          ],
+          statusLang(),
+          async (value) => {
+            await ctx.invoke('setUiLang', [value])
+            ui.toast(t('界面语言已切换', 'Interface language changed'), 'ok')
+            await refresh()
+          },
+        )
+        const targetLang = mkSelect(
+          t('学习目标', 'Learning target'),
+          [
+            ['en', 'English'],
+            ['zh', '中文'],
+          ],
+          statusTarget(),
+          async (value) => {
+            await ctx.invoke('setTargetLang', [value])
+            ui.toast(t('学习目标已切换', 'Learning target changed'), 'ok')
+            await refresh()
+          },
+        )
+        const langBox = document.createElement('div')
+        langBox.className = 'cb-lang-box'
+        langBox.append(uiLang.line, targetLang.line)
+        sheet.body.append(ui.section(t('语言', 'Language')), langBox)
 
         const seg = ui.segmented(MODES, {
           value: 'trigger',
@@ -256,6 +310,8 @@ export default {
           try {
             const status = await ctx.invoke('status')
             if (status.uiLang) lang = status.uiLang
+            uiLang.select.value = status.uiLang || lang
+            targetLang.select.value = status.targetLang || 'en'
             statusPill.textContent = status.connected ? t('已连接', 'connected') : t('未连接', 'offline')
             statusPill.className = `pill ${status.connected ? 'on' : 'off'}`
             portText.textContent = String(status.port)
