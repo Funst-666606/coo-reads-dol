@@ -1,7 +1,7 @@
 /**
  * 单词朗读：用系统自带的 SpeechSynthesis（离线，不经过网络）。
  *
- * 只做「读一个词」：取消上一次、选一个本地英文嗓音、按略慢的语速读。
+ * 只做「读一个词」：取消上一次、按学习目标选中文/英文嗓音。
  * 不支持的环境返回 'unsupported'，由 UI 提示，不抛错。
  */
 
@@ -44,7 +44,22 @@ export function pickEnglishVoice(voices: readonly SpeechSynthesisVoice[]): Speec
   return [...english].sort((a, b) => score(a) - score(b))[0] ?? null
 }
 
-export function speakWord(text: string, opts: { rate?: number } = {}): SpeakResult {
+/** 中文嗓音：优先普通话、本地、zh-CN；没有就退回任意 zh。 */
+export function pickChineseVoice(voices: readonly SpeechSynthesisVoice[]): SpeechSynthesisVoice | null {
+  const chinese = voices.filter((v) => /^zh([-_]|$)/i.test(v.lang))
+  if (chinese.length === 0) return null
+  const score = (v: SpeechSynthesisVoice): number => {
+    let score = v.localService ? 0 : 10
+    const lang = v.lang.toLowerCase()
+    if (lang.startsWith('zh-cn') || lang.startsWith('zh-hans')) score += 0
+    else if (lang.startsWith('zh-tw') || lang.startsWith('zh-hant')) score += 1
+    else score += 2
+    return score
+  }
+  return [...chinese].sort((a, b) => score(a) - score(b))[0] ?? null
+}
+
+export function speakWord(text: string, opts: { rate?: number; lang?: 'en' | 'zh' } = {}): SpeakResult {
   const speech = engine()
   if (!speech) return 'unsupported'
 
@@ -60,10 +75,12 @@ export function speakWord(text: string, opts: { rate?: number } = {}): SpeakResu
   const Utterance = (globalThis as unknown as SpeechGlobals).SpeechSynthesisUtterance
   if (!Utterance) return 'unsupported'
 
+  const chinese = opts.lang === 'zh'
   const utterance = new Utterance(word)
-  utterance.lang = 'en-US'
-  utterance.rate = opts.rate ?? 0.95
-  const voice = pickEnglishVoice(speech.getVoices())
+  utterance.lang = chinese ? 'zh-CN' : 'en-US'
+  utterance.rate = opts.rate ?? (chinese ? 0.85 : 0.95)
+  utterance.pitch = 1
+  const voice = chinese ? pickChineseVoice(speech.getVoices()) : pickEnglishVoice(speech.getVoices())
   if (voice) {
     utterance.voice = voice
     utterance.lang = voice.lang

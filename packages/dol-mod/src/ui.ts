@@ -417,7 +417,7 @@ export class Ui {
             this.deps.speak(lemma)
             return
           }
-          const result = speakWord(lemma, { rate: this.settings.rate })
+          const result = speakWord(lemma, { rate: this.settings.rate, lang: this.targetLang })
           if (result === 'unsupported') this.toast('当前环境不支持朗读（系统没有可用的语音合成）', true)
         })
         head.append(speakBtn)
