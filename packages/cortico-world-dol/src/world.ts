@@ -31,7 +31,32 @@ import {
 import { DolServer } from './server.ts'
 import { SFW } from './variant.ts'
 
-const VERSION = '0.1.27'
+const VERSION = '0.1.28'
+const UI_LANG_CODES: Record<string, string> = {
+  '简体中文': 'zh-CN',
+  '正體中文': 'zh-TW',
+  English: 'en',
+  'Русский': 'ru',
+  '日本語': 'ja',
+}
+
+function uiLangCode(value: string | undefined): string {
+  if (!value) return 'zh-CN'
+  return UI_LANG_CODES[value] ?? value
+}
+
+const TARGET_CODES: Record<string, string> = {
+  中文: 'zh',
+  Chinese: 'zh',
+  English: 'en',
+  英语: 'en',
+}
+
+function targetLangCode(value: string | undefined): string {
+  if (!value) return 'en'
+  return TARGET_CODES[value] ?? value
+}
+
 const UI_LANG_NAMES: Record<string, string> = {
   'zh-CN': '简体中文',
   'zh-TW': '正體中文',
@@ -135,8 +160,8 @@ export class DolWorld implements World {
         ? '本版本是学习版：评论态度锁定「严谨」，不生成性内容；成人内容与开发者模式未开放。'
         : '完整版：成人内容与更多态度档位可在设置中开启。',
       attitude: ATTITUDE_LABELS[attitude],
-      ui_lang: UI_LANG_NAMES[cfg.uiLang] ?? '简体中文',
-      target_lang: cfg.targetLang === 'zh' ? '中文' : 'English',
+      ui_lang: UI_LANG_NAMES[uiLangCode(cfg.uiLang)] ?? '简体中文',
+      target_lang: targetLangCode(cfg.targetLang) === 'zh' ? '中文' : 'English',
       attitude_rule: ATTITUDE_RULES[attitude],
     }
   }
@@ -388,8 +413,8 @@ export class DolWorld implements World {
       attitude: this.deps.cfg.attitude,
       effectiveAttitude: effectiveAttitude(this.deps.cfg),
       sfw: SFW,
-      uiLang: this.deps.cfg.uiLang,
-      targetLang: this.deps.cfg.targetLang,
+      uiLang: uiLangCode(this.deps.cfg.uiLang),
+      targetLang: targetLangCode(this.deps.cfg.targetLang),
       adult: this.deps.cfg.adult,
       onboarded: this.deps.cfg.onboarded,
       todayComments: this.commentsToday,
@@ -602,6 +627,8 @@ export class DolWorld implements World {
       adult: this.deps.cfg.adult,
       statusPageLimit: this.deps.cfg.statusPageLimit,
       statusTotalLimit: this.deps.cfg.statusTotalLimit,
+      uiLang: uiLangCode(this.deps.cfg.uiLang),
+      targetLang: targetLangCode(this.deps.cfg.targetLang),
     })
   }
 

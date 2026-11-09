@@ -22,7 +22,7 @@ import { applyVocabCommand } from './vocab-commands.ts'
 
 const TAG = '[CooBridge]'
 let detectedI18n: string | null = null
-const CLIENT_VERSION = '0.1.34'
+const CLIENT_VERSION = '0.1.35'
 const SUPPORTED_GAME = '0.5.12.13'
 const PORT_BASE = 17321
 const PORT_COUNT = 10
@@ -110,6 +110,8 @@ function boot(): void {
           statusTotalLimit = cfg.statusTotalLimit ?? 0
           if (!settings.uiLang) ui.setLocale(cfg.uiLang ?? 'zh-CN')
           if (!settings.targetLang) ui.setTargetLang(cfg.targetLang ?? 'en')
+          if (settings.uiLang) ui.setLocale(cfg.uiLang ?? settings.uiLang)
+          if (settings.targetLang) ui.setTargetLang(cfg.targetLang ?? settings.targetLang)
           if (cfg.targetLang === 'zh' && !i18n) {
             ui.toast('没有检测到汉化模组：中文点字可能无效，请确认已装 DoL 汉化', true)
           }

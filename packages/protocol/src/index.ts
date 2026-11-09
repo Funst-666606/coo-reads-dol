@@ -133,6 +133,8 @@ export interface ConfigMsg {
   adult: boolean
   statusPageLimit?: number
   statusTotalLimit?: number
+  uiLang?: string
+  targetLang?: string
 }
 
 export interface LearningCommandMsg {
@@ -388,6 +390,10 @@ export function decodeWorldMessage(raw: unknown): WorldMessage | null {
         learning: raw['learning'],
         attitude: typeof raw['attitude'] === 'string' ? raw['attitude'] : 'normal',
         adult: raw['adult'] === true,
+        ...(typeof raw['statusPageLimit'] === 'number' ? { statusPageLimit: raw['statusPageLimit'] } : {}),
+        ...(typeof raw['statusTotalLimit'] === 'number' ? { statusTotalLimit: raw['statusTotalLimit'] } : {}),
+        ...(typeof raw['uiLang'] === 'string' ? { uiLang: raw['uiLang'] } : {}),
+        ...(typeof raw['targetLang'] === 'string' ? { targetLang: raw['targetLang'] } : {}),
       }
     case 'command': {
       if (raw['command'] !== 'vocab' || !isRecord(raw['payload'])) return null
