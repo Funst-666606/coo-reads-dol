@@ -22,7 +22,7 @@ import { applyVocabCommand } from './vocab-commands.ts'
 
 const TAG = '[CooBridge]'
 let detectedI18n: string | null = null
-const CLIENT_VERSION = '0.1.33'
+const CLIENT_VERSION = '0.1.34'
 const SUPPORTED_GAME = '0.5.12.13'
 const PORT_BASE = 17321
 const PORT_COUNT = 10
@@ -83,12 +83,22 @@ function boot(): void {
           bridge.setLearning(learning)
         },
         saveSettings: (next) => saveSettings(kv, next),
-        setUiLang: (lang) => bridge.sendConfigSet({ uiLang: lang }),
-        setTargetLang: (target) => bridge.sendConfigSet({ targetLang: target }),
+        setUiLang: (lang) => {
+          settings.uiLang = lang
+          saveSettings(kv, settings)
+          bridge.sendConfigSet({ uiLang: lang })
+        },
+        setTargetLang: (target) => {
+          settings.targetLang = target
+          saveSettings(kv, settings)
+          bridge.sendConfigSet({ targetLang: target })
+        },
         connected: () => bridge.isConnected(),
         reconnect: () => bridge.reconnect(),
       })
       ui.mount()
+      ui.setLocale(settings.uiLang || 'zh-CN')
+      ui.setTargetLang(settings.targetLang || 'en')
       bridge.setHooks({
         onStatus: (status) => ui.setStatus(status),
         onReply: (id, kind, payload) => ui.onReply(id, kind, payload),
@@ -98,11 +108,10 @@ function boot(): void {
         onConfig: (cfg) => {
           statusPageLimit = cfg.statusPageLimit ?? 0
           statusTotalLimit = cfg.statusTotalLimit ?? 0
-          ui.setLocale(cfg.uiLang ?? 'zh-CN')
-          ui.setTargetLang(cfg.targetLang ?? 'en')
+          if (!settings.uiLang) ui.setLocale(cfg.uiLang ?? 'zh-CN')
+          if (!settings.targetLang) ui.setTargetLang(cfg.targetLang ?? 'en')
           if (cfg.targetLang === 'zh' && !i18n) {
-            ui.setTargetLang('en')
-            ui.toast('需要 DoL 汉化模组才能学习中文；本次按英语模式运行', true)
+            ui.toast('没有检测到汉化模组：中文点字可能无效，请确认已装 DoL 汉化', true)
           }
           ui.setLearning(cfg.enabled && cfg.learning)
         },
