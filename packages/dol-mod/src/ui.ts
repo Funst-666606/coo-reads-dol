@@ -45,6 +45,13 @@ interface WordView {
   lemma: string
   phonetic?: string
   pos?: string
+  pinyin?: string
+  zhuyin?: string
+  wubi?: string
+  radical?: string
+  components?: string[]
+  traditional?: string
+  strokes?: number
   gloss: string
   roots?: RootPart[]
   family?: string[]
@@ -368,6 +375,27 @@ export class Ui {
     else this.card.append(row('cb-roots cb-muted', '无可靠词根'))
     if (view.family?.length) this.card.append(row('cb-family', `同根：${view.family.join(' / ')}`))
     this.card.append(row('cb-source', view.source === 'local' ? '来源：本地词典' : '来源：AI 推测（Coo）'))
+  }
+
+  /** 中文单字：拼音/注音/五笔、部首部件、正体写法，各自独立一块。 */
+  private appendChineseDetails(view: WordView): void {
+    if (view.pinyin || view.zhuyin) {
+      const parts: string[] = []
+      if (view.pinyin) parts.push(`拼音 ${view.pinyin}`)
+      if (view.zhuyin) parts.push(`注音 ${view.zhuyin}`)
+      this.card.append(row('cb-block-label', '读音'), row('cb-phon', parts.join('  ·  ')))
+    }
+    if (view.wubi) this.card.append(row('cb-block-label', '五笔 86'), row('cb-phon', view.wubi))
+    if (view.radical || view.components?.length) {
+      this.card.append(row('cb-block-label', '部首与部件'))
+      const main = view.radical ? `部首：${view.radical}` : ''
+      const parts = view.components?.length ? `部件：${view.components.join(' + ')}` : ''
+      this.card.append(row('cb-roots', [main, parts].filter(Boolean).join('；')))
+    }
+    if (view.traditional) {
+      this.card.append(row('cb-block-label', '正体写法'))
+      this.card.append(row('cb-gloss', view.traditional + (view.strokes ? `（${view.strokes} 画）` : '')))
+    }
   }
 
   private notifyEntry(op: 'add' | 'remove' | 'review' | 'mastered', entry: VocabEntry): void {
