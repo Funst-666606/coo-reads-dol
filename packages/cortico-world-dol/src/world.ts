@@ -32,7 +32,7 @@ import {
 import { DolServer } from './server.ts'
 import { SFW } from './variant.ts'
 
-const VERSION = '0.1.34'
+const VERSION = '0.1.35'
 const UI_LANG_CODES: Record<string, string> = {
   '简体中文': 'zh-CN',
   '正體中文': 'zh-TW',

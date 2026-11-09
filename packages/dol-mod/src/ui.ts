@@ -17,6 +17,7 @@ import { speakWord } from './speech.ts'
 import { DEFAULT_SETTINGS, clampRate, type Settings } from './settings.ts'
 import { importVocab, parseVocabText } from './vocab-io.ts'
 import { describePassageRoot, resolvePassageRoot } from './scene.ts'
+import { lookupHanzi, type HanziInfo } from './hanzi.ts'
 import { getLocale, localizeDom, observeLocale, setLocale, tr } from './i18n.ts'
 
 export interface UiDeps {
@@ -66,6 +67,7 @@ type CardState =
       sentence: string
       local: WordView | null
       coo: WordView | null
+      hanzi?: HanziInfo
       pending: boolean
     }
   | { kind: 'sentence'; text: string; payload: SentencePayload | null; status: 'loading' | 'error' | 'ready' }
@@ -274,13 +276,22 @@ export class Ui {
   // ── 卡片 ────────────────────────────────────────────────────────────────
 
   private openWord(word: string, sentence: string, x: number, y: number): void {
-    const hit = this.targetLang === 'zh' ? undefined : lookup(word)
+    const hanzi = lookupHanzi(word)
+    const hit = hanzi ? undefined : lookup(word)
     const local = hit ? this.localView(hit, sentence) : null
 
     const cached = this.deps.wordCache.get(wordCacheKey(word))
     const coo = cached ? this.viewFromPayload(cached, word, sentence) : null
 
-    this.current = { kind: 'word', word, sentence, local, coo, pending: false }
+    this.current = {
+      kind: 'word',
+      word,
+      sentence,
+      local,
+      coo,
+      ...(hanzi ? { hanzi } : {}),
+      pending: false,
+    }
     this.renderCurrent()
     this.positionAt(x, y)
   }
@@ -365,6 +376,25 @@ export class Ui {
     }
   }
 
+  /** 内置字库 + Coo 补充，合成区块用的视图。 */
+  private hanziView(info: HanziInfo, coo: WordView | null, sentence: string): WordView {
+    return {
+      word: info.char,
+      lemma: info.char,
+      gloss: coo?.gloss ?? '',
+      source: 'local',
+      sentence,
+      pinyin: info.pinyin,
+      zhuyin: info.zhuyin,
+      wubi: info.wubi,
+      radical: info.radical || coo?.radical || '',
+      traditional: info.traditional || coo?.traditional || tr('与简体相同'),
+      ...(coo?.components?.length ? { components: coo.components } : {}),
+      ...(coo?.strokes ? { strokes: coo.strokes } : {}),
+      ...(coo?.roots?.length ? { roots: coo.roots } : {}),
+    }
+  }
+
   /** 单词卡的「本地词典 / Coo 补充」共用一个块；中文时词根/同根交给汉字区块。 */
   private appendWordBlock(view: WordView, label: string, chinese = false): void {
     this.card.append(row('cb-block-label', label))
@@ -389,7 +419,7 @@ export class Ui {
       const box = document.createElement('div')
       box.className = 'cb-hanzi'
       box.append(row('cb-hanzi-title', title))
-      if (lines.length === 0) box.append(row('cb-hanzi-line cb-muted', 'Coo 未返回这一项'))
+      if (lines.length === 0) box.append(row('cb-hanzi-line cb-muted', tr('Coo 未返回这一项')))
       for (const line of lines) box.append(row('cb-hanzi-line', line))
       this.card.append(box)
     }
@@ -404,23 +434,20 @@ export class Ui {
     const radical = view.radical ?? components.find((part) => Array.from(part).length === 1)
 
     const read: string[] = []
-    if (pinyin) read.push(`拼音  ${pinyin}`)
-    if (view.zhuyin) read.push(`注音  ${view.zhuyin}`)
-    if (view.wubi) read.push(`五笔 86  ${view.wubi}`)
-    section('读音', read)
+    if (pinyin) read.push(`${tr('拼音')}  ${pinyin}`)
+    if (view.zhuyin) read.push(`${tr('注音')}  ${view.zhuyin}`)
+    if (view.wubi) read.push(`${tr('五笔 86')}  ${view.wubi}`)
+    section(tr('读音'), read)
 
     const shape: string[] = []
-    if (radical) shape.push(`部首  ${radical}`)
-    if (components.length) shape.push(`部件  ${components.join(' + ')}`)
-    section('部首与部件', shape)
+    if (radical) shape.push(`${tr('部首')}  ${radical}`)
+    if (components.length) shape.push(`${tr('部件')}  ${components.join(' + ')}`)
+    section(tr('部首与部件'), shape)
 
-    section(
-      '正体写法',
-      view.traditional ? [view.traditional + (view.strokes ? `（${view.strokes} 画）` : '')] : [],
-    )
+    section(tr('正体写法'), view.traditional ? [view.traditional + (view.strokes ? `（${view.strokes}）` : '')] : [])
 
     const notes = view.roots?.map((r) => `${r.part}：${r.meaning}`).filter(Boolean) ?? []
-    if (notes.length) section('构字理据', notes)
+    if (notes.length) section(tr('构字理据'), notes)
   }
 
   private notifyEntry(op: 'add' | 'remove' | 'review' | 'mastered', entry: VocabEntry): void {
@@ -478,13 +505,10 @@ export class Ui {
       this.card.append(head)
 
       if (local) this.appendWordBlock(local, '本地词典')
-      if (coo) {
-        const hanzi = /\p{Script=Han}/u.test(state.word)
-        if (hanzi) this.appendChineseDetails(coo)
-        this.appendWordBlock(coo, 'Coo 补充（AI 推测）', hanzi)
-      }
+      if (state.hanzi) this.appendChineseDetails(this.hanziView(state.hanzi, coo, state.sentence))
+      if (coo) this.appendWordBlock(coo, 'Coo 补充（AI 推测）', Boolean(state.hanzi))
       if (state.pending) this.card.append(row('cb-loading', 'Coo 正在想…'))
-      else if (!local && !coo) this.card.append(row('cb-muted', '本地词典未收录'))
+      else if (!local && !coo && !state.hanzi) this.card.append(row('cb-muted', '本地词典未收录'))
 
       const buttons: HTMLButtonElement[] = []
 
