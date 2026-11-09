@@ -554,3 +554,25 @@
   font-size: 12px;
   cursor: pointer;
 }
+
+/* 中文单字：读音 / 部首 / 正体 的独立区块 */
+.cb-hanzi {
+  margin: 8px 0;
+  padding: 8px 10px;
+  border: 1px solid rgba(159, 199, 216, 0.35);
+  border-radius: 8px;
+  background: rgba(159, 199, 216, 0.06);
+}
+.cb-hanzi-title {
+  margin: 0 0 4px;
+  color: #9fc7d8;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+.cb-hanzi-line {
+  margin: 2px 0;
+  color: #ececf1;
+  font-size: 13px;
+  line-height: 1.5;
+}

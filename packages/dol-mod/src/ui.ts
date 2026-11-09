@@ -377,24 +377,30 @@ export class Ui {
     this.card.append(row('cb-source', view.source === 'local' ? '来源：本地词典' : '来源：AI 推测（Coo）'))
   }
 
-  /** 中文单字：拼音/注音/五笔、部首部件、正体写法，各自独立一块。 */
+  /** 中文单字：读音、部首、正体三个独立卡片区块；顺序按中文习惯。 */
   private appendChineseDetails(view: WordView): void {
-    if (view.pinyin || view.zhuyin) {
-      const parts: string[] = []
-      if (view.pinyin) parts.push(`拼音 ${view.pinyin}`)
-      if (view.zhuyin) parts.push(`注音 ${view.zhuyin}`)
-      this.card.append(row('cb-block-label', '读音'), row('cb-phon', parts.join('  ·  ')))
+    const section = (title: string, lines: string[]): void => {
+      if (lines.length === 0) return
+      const box = document.createElement('div')
+      box.className = 'cb-hanzi'
+      box.append(row('cb-hanzi-title', title))
+      for (const line of lines) box.append(row('cb-hanzi-line', line))
+      this.card.append(box)
     }
-    if (view.wubi) this.card.append(row('cb-block-label', '五笔 86'), row('cb-phon', view.wubi))
-    if (view.radical || view.components?.length) {
-      this.card.append(row('cb-block-label', '部首与部件'))
-      const main = view.radical ? `部首：${view.radical}` : ''
-      const parts = view.components?.length ? `部件：${view.components.join(' + ')}` : ''
-      this.card.append(row('cb-roots', [main, parts].filter(Boolean).join('；')))
-    }
+
+    const read: string[] = []
+    if (view.pinyin) read.push(`拼音  ${view.pinyin}`)
+    if (view.zhuyin) read.push(`注音  ${view.zhuyin}`)
+    if (view.wubi) read.push(`五笔 86  ${view.wubi}`)
+    section('读音', read)
+
+    const shape: string[] = []
+    if (view.radical) shape.push(`部首  ${view.radical}`)
+    if (view.components?.length) shape.push(`部件  ${view.components.join(' + ')}`)
+    section('部首与部件', shape)
+
     if (view.traditional) {
-      this.card.append(row('cb-block-label', '正体写法'))
-      this.card.append(row('cb-gloss', view.traditional + (view.strokes ? `（${view.strokes} 画）` : '')))
+      section('正体写法', [view.traditional + (view.strokes ? `（${view.strokes} 画）` : '')])
     }
   }
 
@@ -453,7 +459,10 @@ export class Ui {
       this.card.append(head)
 
       if (local) this.appendWordBlock(local, '本地词典')
-      if (coo) this.appendWordBlock(coo, 'Coo 补充（AI 推测）')
+      if (coo) {
+        if (this.targetLang === 'zh') this.appendChineseDetails(coo)
+        this.appendWordBlock(coo, 'Coo 补充（AI 推测）')
+      }
       if (state.pending) this.card.append(row('cb-loading', 'Coo 正在想…'))
       else if (!local && !coo) this.card.append(row('cb-muted', '本地词典未收录'))
 
