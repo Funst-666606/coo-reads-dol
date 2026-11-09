@@ -365,43 +365,62 @@ export class Ui {
     }
   }
 
-  /** 单词卡的「本地词典 / Coo 补充」共用一个块。 */
-  private appendWordBlock(view: WordView, label: string): void {
+  /** 单词卡的「本地词典 / Coo 补充」共用一个块；中文时词根/同根交给汉字区块。 */
+  private appendWordBlock(view: WordView, label: string, chinese = false): void {
     this.card.append(row('cb-block-label', label))
-    if (view.phonetic) this.card.append(row('cb-phon', `/${view.phonetic}/`))
-    if (view.pos) this.card.append(row('cb-pos', view.pos))
+    if (!chinese) {
+      if (view.phonetic) this.card.append(row('cb-phon', `/${view.phonetic}/`))
+      if (view.pos) this.card.append(row('cb-pos', view.pos))
+    } else if (view.pos) {
+      this.card.append(row('cb-pos', view.pos))
+    }
     if (view.gloss) this.card.append(row('cb-gloss', view.gloss))
-    if (view.roots?.length) this.card.append(row('cb-roots', formatRoots(view.roots)))
-    else this.card.append(row('cb-roots cb-muted', '无可靠词根'))
-    if (view.family?.length) this.card.append(row('cb-family', `同根：${view.family.join(' / ')}`))
+    if (!chinese) {
+      if (view.roots?.length) this.card.append(row('cb-roots', formatRoots(view.roots)))
+      else this.card.append(row('cb-roots cb-muted', '无可靠词根'))
+      if (view.family?.length) this.card.append(row('cb-family', `同根：${view.family.join(' / ')}`))
+    }
     this.card.append(row('cb-source', view.source === 'local' ? '来源：本地词典' : '来源：AI 推测（Coo）'))
   }
 
-  /** 中文单字：读音、部首、正体三个独立卡片区块；顺序按中文习惯。 */
+  /** 中文单字：读音、部首、正体三个独立卡片区块；缺字段也保留块并说明。 */
   private appendChineseDetails(view: WordView): void {
     const section = (title: string, lines: string[]): void => {
-      if (lines.length === 0) return
       const box = document.createElement('div')
       box.className = 'cb-hanzi'
       box.append(row('cb-hanzi-title', title))
+      if (lines.length === 0) box.append(row('cb-hanzi-line cb-muted', 'Coo 未返回这一项'))
       for (const line of lines) box.append(row('cb-hanzi-line', line))
       this.card.append(box)
     }
 
+    const pinyin =
+      view.pinyin ??
+      (view.phonetic && /^[a-zA-ZüÜāáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜ·\s]+$/.test(view.phonetic.trim())
+        ? view.phonetic.replace(/^\/|\/$/g, '')
+        : undefined)
+    const rootsAsParts = view.roots?.map((r) => r.part).filter((part) => /^\p{Script=Han}+$/u.test(part)) ?? []
+    const components = view.components?.length ? view.components : rootsAsParts
+    const radical = view.radical ?? components.find((part) => Array.from(part).length === 1)
+
     const read: string[] = []
-    if (view.pinyin) read.push(`拼音  ${view.pinyin}`)
+    if (pinyin) read.push(`拼音  ${pinyin}`)
     if (view.zhuyin) read.push(`注音  ${view.zhuyin}`)
     if (view.wubi) read.push(`五笔 86  ${view.wubi}`)
     section('读音', read)
 
     const shape: string[] = []
-    if (view.radical) shape.push(`部首  ${view.radical}`)
-    if (view.components?.length) shape.push(`部件  ${view.components.join(' + ')}`)
+    if (radical) shape.push(`部首  ${radical}`)
+    if (components.length) shape.push(`部件  ${components.join(' + ')}`)
     section('部首与部件', shape)
 
-    if (view.traditional) {
-      section('正体写法', [view.traditional + (view.strokes ? `（${view.strokes} 画）` : '')])
-    }
+    section(
+      '正体写法',
+      view.traditional ? [view.traditional + (view.strokes ? `（${view.strokes} 画）` : '')] : [],
+    )
+
+    const notes = view.roots?.map((r) => `${r.part}：${r.meaning}`).filter(Boolean) ?? []
+    if (notes.length) section('构字理据', notes)
   }
 
   private notifyEntry(op: 'add' | 'remove' | 'review' | 'mastered', entry: VocabEntry): void {
@@ -460,8 +479,9 @@ export class Ui {
 
       if (local) this.appendWordBlock(local, '本地词典')
       if (coo) {
-        if (this.targetLang === 'zh') this.appendChineseDetails(coo)
-        this.appendWordBlock(coo, 'Coo 补充（AI 推测）')
+        const hanzi = /\p{Script=Han}/u.test(state.word)
+        if (hanzi) this.appendChineseDetails(coo)
+        this.appendWordBlock(coo, 'Coo 补充（AI 推测）', hanzi)
       }
       if (state.pending) this.card.append(row('cb-loading', 'Coo 正在想…'))
       else if (!local && !coo) this.card.append(row('cb-muted', '本地词典未收录'))
