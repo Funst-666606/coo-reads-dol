@@ -24,6 +24,23 @@ export const DOL: WorldDefinition<DolConfig> = {
       throw new Error('worlds.dol.sceneTextLimit 为 0（不限）或至少 200')
     }
     if (cfg.replyTimeoutSec < 5) throw new Error('worlds.dol.replyTimeoutSec 至少 5')
+    const uiMap: Record<string, string> = {
+      简体中文: 'zh-CN',
+      正體中文: 'zh-TW',
+      English: 'en',
+      Русский: 'ru',
+      日本語: 'ja',
+    }
+    if (uiMap[cfg.uiLang]) cfg.uiLang = uiMap[cfg.uiLang] as typeof cfg.uiLang
+    if (!['zh-CN', 'zh-TW', 'en', 'ru', 'ja'].includes(cfg.uiLang)) {
+      throw new Error('worlds.dol.uiLang 只能是 zh-CN / zh-TW / en / ru / ja')
+    }
+    const target = String(cfg.targetLang)
+    if (target === '中文' || target === 'Chinese') cfg.targetLang = 'zh'
+    if (target === '英语' || target === 'English') cfg.targetLang = 'en'
+    if (!['en', 'zh'].includes(cfg.targetLang)) {
+      throw new Error('worlds.dol.targetLang 只能是 en / zh')
+    }
   },
   create: (ctx) =>
     new DolWorld({

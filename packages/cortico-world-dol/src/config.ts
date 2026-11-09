@@ -5,6 +5,12 @@ import { SFW } from './variant.ts'
 export type DolMode = 'proactive' | 'trigger' | 'passive'
 export type DolAttitude = 'strict' | 'normal' | 'subtle' | 'erotic' | 'lewd'
 
+/** 界面与 Coo 回复语言。 */
+export type UiLang = 'zh-CN' | 'zh-TW' | 'en' | 'ru' | 'ja'
+
+/** 教学目标语言。 */
+export type TargetLang = 'en' | 'zh'
+
 export interface DolConfig {
   enabled: boolean
   /** false = 非学习模式：只陪玩，不查词/翻译/生词。 */
@@ -29,6 +35,10 @@ export interface DolConfig {
   statusPageLimit: number
   /** 状态页总上限；0 = 不限。 */
   statusTotalLimit: number
+  /** 界面与 Coo 回复语言。 */
+  uiLang: UiLang
+  /** 教学目标语言。 */
+  targetLang: TargetLang
   /** 等 Coo 回传讲解的超时（秒）。 */
   replyTimeoutSec: number
 }
@@ -46,6 +56,8 @@ export const DOL_DEFAULTS: DolConfig = {
   sceneTextLimit: 0,
   statusPageLimit: 0,
   statusTotalLimit: 0,
+  uiLang: 'zh-CN',
+  targetLang: 'en',
   replyTimeoutSec: 20,
 }
 

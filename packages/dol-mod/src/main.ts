@@ -21,7 +21,8 @@ import { loadSettings, saveSettings } from './settings.ts'
 import { applyVocabCommand } from './vocab-commands.ts'
 
 const TAG = '[CooBridge]'
-const CLIENT_VERSION = '0.1.30'
+let detectedI18n: string | null = null
+const CLIENT_VERSION = '0.1.31'
 const SUPPORTED_GAME = '0.5.12.13'
 const PORT_BASE = 17321
 const PORT_COUNT = 10
@@ -57,7 +58,8 @@ function boot(): void {
         console.warn(`${TAG} 没找到 ModLoader，安静退出`)
         return
       }
-      const i18n = detectI18n()
+      detectedI18n = detectI18n()
+      const i18n = detectedI18n
       if (i18n) showCompanionBanner(i18n)
 
       const kv = localKV()
@@ -73,14 +75,16 @@ function boot(): void {
         askSentence: (text) => bridge.askSentence(text),
         askWord: (word, sentence) => bridge.askWord(word, sentence),
         notifyVocab: (op, entry) => bridge.sendVocab(op, entry),
-        settings: { ...settings, learning: settings.learning && !i18n },
-        learning: settings.learning && !i18n,
+        settings: { ...settings, learning: settings.learning },
+        learning: settings.learning,
         setLearning: (learning) => {
           settings.learning = learning
           saveSettings(kv, settings)
           bridge.setLearning(learning)
         },
         saveSettings: (next) => saveSettings(kv, next),
+        setUiLang: (lang) => bridge.sendConfigSet({ uiLang: lang }),
+        setTargetLang: (target) => bridge.sendConfigSet({ targetLang: target }),
         connected: () => bridge.isConnected(),
         reconnect: () => bridge.reconnect(),
       })
@@ -94,6 +98,12 @@ function boot(): void {
         onConfig: (cfg) => {
           statusPageLimit = cfg.statusPageLimit ?? 0
           statusTotalLimit = cfg.statusTotalLimit ?? 0
+          ui.setLocale(cfg.uiLang ?? 'zh-CN')
+          ui.setTargetLang(cfg.targetLang ?? 'en')
+          if (cfg.targetLang === 'zh' && !i18n) {
+            ui.setTargetLang('en')
+            ui.toast('需要 DoL 汉化模组才能学习中文；本次按英语模式运行', true)
+          }
           ui.setLearning(cfg.enabled && cfg.learning)
         },
         onStatusRequest: (id) => {
@@ -221,6 +231,8 @@ interface BridgeHooks {
     adult: boolean
     statusPageLimit?: number
     statusTotalLimit?: number
+    uiLang?: string
+    targetLang?: string
   }): void
   onStatusRequest?(id: string): void
 }
@@ -296,6 +308,11 @@ class Bridge {
     this.send({ type: 'ping' })
   }
 
+  sendConfigSet(patch: { uiLang?: string; targetLang?: string }): void {
+    if (!this.isConnected()) return
+    this.send({ type: 'config_set', ...patch })
+  }
+
   sendChoice(index: number, label: string): void {
     if (!this.isConnected()) return
     this.send({ type: 'choice', index, label })
@@ -354,7 +371,7 @@ class Bridge {
         type: 'hello',
         protocol: PROTOCOL_VERSION,
         client: { name: 'CooBridge', version: CLIENT_VERSION },
-        game: { version: gameVersion(), passage: String(window.State?.passage ?? ''), lang: 'en' },
+        game: { version: gameVersion(), passage: String(window.State?.passage ?? ''), lang: detectedI18n ? 'zh' : 'en' },
       })
     }
     ws.onmessage = (ev) => this.onMessage(String(ev.data))
@@ -475,18 +492,12 @@ class Bridge {
 // ── 汉化拦截提示 ──────────────────────────────────────────────────────────
 
 function showCompanionBanner(message: string): void {
-  console.warn(`${TAG} 检测到中文本地化，切换为非学习模式：${message}`)
-  document.getElementById('cb-fatal')?.remove()
-  const banner = document.createElement('div')
-  banner.id = 'cb-fatal'
-  banner.innerHTML = `<div class="cb-fatal-box">
-    <h2>已切换为非学习模式</h2>
-    <p>${escapeHtml(message)}</p>
-    <p class="cb-fatal-hint">想继续学英语：圆点 → 设置 → 打开「学习英语模式」；本次运行有效。</p>
-    <button type="button" class="cb-fatal-close">知道了</button>
-  </div>`
-  banner.querySelector('.cb-fatal-close')?.addEventListener('click', () => banner.remove())
-  document.body.appendChild(banner)
+  console.info(`${TAG} 检测到中文本地化，学习模式保持开启：${message}`)
+  const el = document.createElement('div')
+  el.className = 'cb-toast'
+  el.textContent = `检测到汉化模组：${message}。学习模式保持开启；目标语言选“中文”即可学中文。`
+  document.body.append(el)
+  window.setTimeout(() => el.remove(), 6000)
 }
 
 function showFatal(message: string): void {

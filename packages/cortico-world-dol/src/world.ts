@@ -31,7 +31,14 @@ import {
 import { DolServer } from './server.ts'
 import { SFW } from './variant.ts'
 
-const VERSION = '0.1.23'
+const VERSION = '0.1.24'
+const UI_LANG_NAMES: Record<string, string> = {
+  'zh-CN': '简体中文',
+  'zh-TW': '正體中文',
+  en: 'English',
+  ru: 'Русский',
+  ja: '日本語',
+}
 const MODES: readonly DolMode[] = ['proactive', 'trigger', 'passive']
 
 export interface DolWorldDeps {
@@ -87,6 +94,7 @@ export class DolWorld implements World {
       onWordAsk: (m) => this.onWordAsk(m),
       onVocab: (m) => this.onVocab(m),
       onStatus: (m) => this.onStatus(m),
+      onConfigSet: (m) => this.onConfigSet(m),
       onConnection: (connected) => this.onConnection(connected),
       onLearning: (learning) => {
         this.deps.cfg.learning = learning
@@ -119,6 +127,8 @@ export class DolWorld implements World {
         ? '本版本是学习版：评论态度锁定「严谨」，不生成性内容；成人内容与开发者模式未开放。'
         : '完整版：成人内容与更多态度档位可在设置中开启。',
       attitude: ATTITUDE_LABELS[attitude],
+      ui_lang: UI_LANG_NAMES[cfg.uiLang] ?? '简体中文',
+      target_lang: cfg.targetLang === 'zh' ? '中文' : 'English',
       attitude_rule: ATTITUDE_RULES[attitude],
     }
   }
@@ -183,7 +193,7 @@ export class DolWorld implements World {
               },
               'worlds.dol.learning': {
                 type: 'boolean',
-                title: zh ? '学习英语模式' : 'Learning mode',
+                title: zh ? '学习语言模式' : 'Learning mode',
                 description: zh ? '关闭 = 只陪玩，不查词/翻译/生词。' : 'Off = companion only.',
                 'x-hot': true,
               },
@@ -241,6 +251,18 @@ export class DolWorld implements World {
                 minimum: 0,
                 'x-suffix': zh ? '字' : 'chars',
                 'x-hot': true,
+              },
+              'worlds.dol.uiLang': {
+                type: 'string',
+                title: zh ? '界面语言' : 'Interface language',
+                description: zh ? '面板、提示与 Coo 回复使用的语言' : 'Language for panel, notices and Coo replies',
+                enum: ['简体中文', '正體中文', 'English', 'Русский', '日本語'],
+              },
+              'worlds.dol.targetLang': {
+                type: 'string',
+                title: zh ? '学习目标语言' : 'Target language',
+                description: zh ? '想学的语言：英语，或中文（需要 DoL 汉化模组）' : 'Language to learn: English, or Chinese (needs a DoL translation mod)',
+                enum: ['English', '中文'],
               },
               'worlds.dol.replyTimeoutSec': {
                 type: 'integer',
@@ -340,6 +362,8 @@ export class DolWorld implements World {
       attitude: this.deps.cfg.attitude,
       effectiveAttitude: effectiveAttitude(this.deps.cfg),
       sfw: SFW,
+      uiLang: this.deps.cfg.uiLang,
+      targetLang: this.deps.cfg.targetLang,
       adult: this.deps.cfg.adult,
       onboarded: this.deps.cfg.onboarded,
       todayComments: this.commentsToday,
@@ -528,7 +552,7 @@ export class DolWorld implements World {
     this.deps.cfg.onboarded = true
     this.deps.persist({ learning, onboarded: true })
     this.pushConfig()
-    return learning ? '已设置为学习英语模式' : '已设置为只陪玩模式'
+    return learning ? '已设置为学习语言模式' : '已设置为只陪玩模式'
   }
 
   private describeNow(): string {
@@ -560,7 +584,7 @@ export class DolWorld implements World {
     if (connected && !this.deps.cfg.onboarded) {
       void this.pushEvent({
         type: 'dol.onboarding',
-        text: '第一次连上。请先问主人：想学英语，还是只想一起玩？收到回答后调用 dol_setup 设置（learning=true/false）。',
+        text: '第一次连上。请先问主人：想学语言，还是只想一起玩？收到回答后调用 dol_setup 设置（learning=true/false）。',
         trigger: 'piggyback',
       })
     }
@@ -593,6 +617,17 @@ export class DolWorld implements World {
     const delta = m.delta ? `\n[变化] ${m.delta}` : ''
     const text = `[DoL 场景] ${m.passage}${from}${where ? `（${where}）` : ''}：${sceneText}${delta}${sidebar}${choices ? `\n选项：${choices}` : ''}`
     void this.pushEvent({ type: 'dol.scene', text, meta: { passage: m.passage, seq: m.seq }, trigger: 'debounce' })
+  }
+
+  private onConfigSet(m: { uiLang?: string; targetLang?: string }): void {
+    if (m.uiLang && ['zh-CN', 'zh-TW', 'en', 'ru', 'ja'].includes(m.uiLang)) {
+      this.deps.cfg.uiLang = m.uiLang as never
+    }
+    if (m.targetLang && ['en', 'zh'].includes(m.targetLang)) {
+      this.deps.cfg.targetLang = m.targetLang as never
+    }
+    this.deps.persist({ uiLang: this.deps.cfg.uiLang, targetLang: this.deps.cfg.targetLang })
+    this.pushConfig()
   }
 
   private onStatus(m: StatusMsg): void {
@@ -833,13 +868,13 @@ export const DOL_TOOL_DECLS: ReadonlyArray<Omit<ToolDef, 'handler'>> = [
   },
   {
     name: 'dol_setup',
-    description: '首次设置：Coo 问清玩家想学英语还是只想玩之后调用。learning=false 表示只陪玩。',
+    description: '首次设置：Coo 问清玩家想学语言还是只想玩之后调用。learning=false 表示只陪玩。',
     tags: ['write'],
     parameters: {
       type: 'object',
       additionalProperties: false,
       properties: {
-        learning: { type: 'boolean', description: 'true = 学英语；false = 只陪玩' },
+        learning: { type: 'boolean', description: 'true = 学习语言；false = 只陪玩' },
       },
       required: ['learning'],
     },
@@ -854,8 +889,9 @@ export const DOL_TOOL_DECLS: ReadonlyArray<Omit<ToolDef, 'handler'>> = [
 
 /** 全部事件（自描述用）。trigger 与运行时 pushEvent 保持一致。 */
 export const DOL_EVENTS = [
+  { type: 'dol.notice', description: '系统提示，例如目标中文但没装汉化模组', trigger: 'piggyback' },
   { type: 'dol.day', description: '过完一天（$days 变化），附带特性/社交/特质/日志快照', trigger: 'piggyback' },
-  { type: 'dol.onboarding', description: '首次连接，Coo 应主动问玩家：学英语还是只陪玩；然后用 dol_setup 设置', trigger: 'piggyback' },
+  { type: 'dol.onboarding', description: '首次连接，Coo 应主动问玩家：学语言还是只陪玩；然后用 dol_setup 设置', trigger: 'piggyback' },
   { type: 'dol.connected', description: '模组连上（玩家打开了游戏）', trigger: 'piggyback' },
   { type: 'dol.disconnected', description: '模组断开（游戏关了或模组停了）', trigger: 'piggyback' },
   { type: 'dol.scene', description: '切换场景：passage、正文、选项、地点/天数', trigger: 'debounce' },

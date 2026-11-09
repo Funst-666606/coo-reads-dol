@@ -6,11 +6,11 @@ import { detectI18n, errorText, isMostlyChinese } from '../src/env.ts'
 const ENGLISH = 'You wake up in a small bed. The room is dark, and the floorboards creak when you move.'
 const CHINESE = '你在一张小床上醒来。房间里很暗，你一动，地板就吱呀作响。窗外的天还没亮。'
 
-test('检测到真正的汉化模组即停用', () => {
+test('检测到真正的汉化模组仍保持学习模式', () => {
   const msg = detectI18n({ modNames: ['TweeReplacer', 'ModI18N'], mainLanguage: 'en' })
   assert.ok(msg)
   assert.match(msg, /ModI18N/)
-  assert.match(msg, /非学习模式/)
+  assert.match(msg, /学习模式保持开启/)
 })
 
 test('通用翻译插件 I18nTweeReplacer 不算汉化（正文英文时放行）', () => {
@@ -25,13 +25,13 @@ test('中文包名与中文补丁名会被拦', () => {
   assert.ok(detectI18n({ modNames: ['中文补丁'] }))
 })
 
-test('主语言不是 en 即停用', () => {
+test('主语言不是 en 时提示保持学习模式', () => {
   const msg = detectI18n({ modNames: [], mainLanguage: 'zh' })
   assert.ok(msg)
   assert.match(msg, /zh/)
 })
 
-test('正文是中文即停用（即便没有汉化包名）', () => {
+test('正文是中文时提示保持学习模式（即便没有汉化包名）', () => {
   const msg = detectI18n({ modNames: ['I18nTweeReplacer'], mainLanguage: 'en', sampleText: CHINESE })
   assert.ok(msg)
   assert.match(msg, /正文是中文/)

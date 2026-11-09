@@ -144,6 +144,12 @@ export interface LearningCommandMsg {
   payload: { learning: boolean }
 }
 
+export interface ConfigSetMsg {
+  type: 'config_set'
+  uiLang?: string
+  targetLang?: string
+}
+
 export interface CommandMsg {
   type: 'command'
   command: 'vocab' | 'learning'
@@ -158,6 +164,7 @@ export type ModMessage =
   | LearningCommandMsg
   | HelloMsg
   | StatusMsg
+  | ConfigSetMsg
   | SceneMsg
   | ChoiceMsg
   | SentenceMsg
@@ -225,6 +232,7 @@ function isRecord(v: unknown): v is Record<string, unknown> {
 }
 
 const MOD_TYPES = new Set<string>([
+  'config_set',
   'hello',
   'scene',
   'choice',
@@ -293,6 +301,12 @@ export function decodeModMessage(raw: unknown): ModMessage | null {
       const payload = raw['payload']
       if (!isRecord(payload) || typeof payload['learning'] !== 'boolean') return null
       return { type: 'command', command: 'learning', payload: { learning: payload['learning'] } }
+    }
+    case 'config_set': {
+      const out: Record<string, unknown> = { type: 'config_set' }
+      if (typeof raw['uiLang'] === 'string') out['uiLang'] = raw['uiLang']
+      if (typeof raw['targetLang'] === 'string') out['targetLang'] = raw['targetLang']
+      return out as never
     }
     case 'status': {
       if (typeof raw['day'] !== 'number' || typeof raw['text'] !== 'string') return null

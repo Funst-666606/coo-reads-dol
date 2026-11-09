@@ -17,6 +17,7 @@ import { speakWord } from './speech.ts'
 import { DEFAULT_SETTINGS, clampRate, type Settings } from './settings.ts'
 import { importVocab, parseVocabText } from './vocab-io.ts'
 import { describePassageRoot, resolvePassageRoot } from './scene.ts'
+import { getLocale, localizeDom, observeLocale, setLocale, tr } from './i18n.ts'
 
 export interface UiDeps {
   book: VocabBook
@@ -29,9 +30,12 @@ export interface UiDeps {
   speak?: (text: string) => void
   settings?: Settings
   saveSettings?: (settings: Settings) => void
-  /** 学习英语模式；false = 只陪玩。 */
+  /** 学习模式；false = 只陪玩。 */
   learning?: boolean
   setLearning?: (learning: boolean) => void
+  /** 修改界面语言 / 目标语言（写回 World 配置）。 */
+  setUiLang?: (lang: string) => void
+  setTargetLang?: (target: string) => void
   connected: () => boolean
   reconnect: () => void
 }
@@ -73,6 +77,7 @@ export class Ui {
   private current: CardState | null = null
   private pendingId: string | null = null
   private anchor = { x: 0, y: 0 }
+  private targetLang: 'en' | 'zh' = 'en'
 
   constructor(deps: UiDeps) {
     this.deps = deps
@@ -117,7 +122,7 @@ export class Ui {
     if (!document.body) return
     const el = document.createElement('div')
     el.className = `cb-toast${bad ? ' bad' : ''}`
-    el.textContent = text
+    el.textContent = tr(text)
     document.body.append(el)
     window.setTimeout(() => el.remove(), 4200)
     this.log(text)
@@ -218,6 +223,12 @@ export class Ui {
     if (!node || node.nodeType !== Node.TEXT_NODE) return null
     const text = node.textContent ?? ''
     const offset = range?.startOffset ?? 0
+    if (this.targetLang === 'zh') {
+      const ch = Array.from(text.slice(offset))[0]
+      if (!ch || !/\p{Script=Han}/u.test(ch)) return null
+      const sentence = this.sentenceAt(node, offset, offset + ch.length) ?? text.trim()
+      return { word: ch, sentence }
+    }
     const bounds = wordBounds(text, offset)
     if (!bounds) return null
     const word = text.slice(bounds.start, bounds.end)
@@ -256,7 +267,7 @@ export class Ui {
   // ── 卡片 ────────────────────────────────────────────────────────────────
 
   private openWord(word: string, sentence: string, x: number, y: number): void {
-    const hit = lookup(word)
+    const hit = this.targetLang === 'zh' ? undefined : lookup(word)
     const local = hit ? this.localView(hit, sentence) : null
 
     const cached = this.deps.wordCache.get(wordCacheKey(word))
@@ -552,6 +563,7 @@ export class Ui {
     `
     document.body.append(panel)
     this.panel = panel
+    observeLocale(panel)
 
     panel.querySelector('[data-act="close"]')?.addEventListener('click', () => this.togglePanel(false))
     panel.querySelectorAll('[data-tab]').forEach((btn) => {
@@ -573,6 +585,7 @@ export class Ui {
     card.hidden = true
     document.body.append(card)
     this.card = card
+    observeLocale(card)
   }
 
   private togglePanel(force?: boolean): void {
@@ -817,6 +830,18 @@ export class Ui {
     this.refreshPanel()
   }
 
+  /** 切换界面语言（来自 World 配置）。 */
+  setLocale(locale: string): void {
+    setLocale(locale)
+    this.refreshPanel()
+    this.renderCurrent()
+  }
+
+  /** 切换教学目标语言：en / zh。 */
+  setTargetLang(target: string): void {
+    this.targetLang = target === 'zh' ? 'zh' : 'en'
+  }
+
   /** 外部（例如 Coo 改了词库）后刷新面板。 */
   refresh(): void {
     this.refreshPanel()
@@ -857,7 +882,7 @@ export class Ui {
       this.refreshPanel()
     })
     const learnText = document.createElement('span')
-    learnText.textContent = '学习英语模式（关闭 = 只陪玩）'
+    learnText.textContent = '学习语言模式（关闭 = 只陪玩）'
     learnLine.append(learnInput, learnText)
     wrap.append(learnLine)
 
@@ -885,6 +910,57 @@ export class Ui {
     })
     rateLine.append(rateLabel, input, output)
     wrap.append(rateLine)
+
+    const selectRow = (
+      label: string,
+      value: string,
+      options: Array<[string, string]>,
+      onChange: (next: string) => void,
+    ): void => {
+      const line = document.createElement('label')
+      line.className = 'cb-setting'
+      const text = document.createElement('span')
+      text.textContent = label
+      const select = document.createElement('select')
+      for (const [code, name] of options) {
+        const option = document.createElement('option')
+        option.value = code
+        option.textContent = name
+        if (code === value) option.selected = true
+        select.append(option)
+      }
+      select.addEventListener('change', () => onChange(select.value))
+      line.append(text, select)
+      wrap.append(line)
+    }
+
+    selectRow(
+      '界面语言',
+      getLocale(),
+      [
+        ['zh-CN', '简体中文'],
+        ['zh-TW', '正體中文'],
+        ['en', 'English'],
+        ['ru', 'Русский'],
+        ['ja', '日本語'],
+      ],
+      (next) => {
+        this.deps.setUiLang?.(next)
+        this.setLocale(next)
+      },
+    )
+    selectRow(
+      '学习目标',
+      this.targetLang,
+      [
+        ['en', 'English'],
+        ['zh', '中文'],
+      ],
+      (next) => {
+        this.setTargetLang(next)
+        this.deps.setTargetLang?.(next)
+      },
+    )
 
     const portLine = document.createElement('label')
     portLine.className = 'cb-setting cb-setting-port'

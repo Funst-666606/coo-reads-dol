@@ -114,15 +114,15 @@ test('握手 → 场景 → 学句 → 回复', async () => {
   }
 })
 
-test('非英文 hello 会被拒绝', async () => {
+test('中文 hello 会被接受（汉化包）', async () => {
   const server = makeServer(PORT + 1)
   await server.start()
   const ws = await connect(`ws://127.0.0.1:${server.actualPort}`)
   try {
-    const errPromise = nextMessage(ws, 'error')
+    const okPromise = nextMessage(ws, 'hello_ok')
     ws.send(hello({ game: { version: '0.5.12.13', passage: 'Start', lang: 'zh' } }))
-    const err = await errPromise
-    assert.equal(err['code'], 'i18n_detected')
+    const ok = await okPromise
+    assert.equal(ok['type'], 'hello_ok')
   } finally {
     ws.terminate()
     await server.stop()

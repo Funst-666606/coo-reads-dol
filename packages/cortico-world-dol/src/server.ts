@@ -39,6 +39,7 @@ export interface DolServerOptions {
   onWordAsk(m: WordMsg): void
   onVocab(m: VocabMsg): void
   onStatus?(m: StatusMsg): void
+  onConfigSet?(m: { uiLang?: string; targetLang?: string }): void
   onConnection(connected: boolean): void
   onLearning?(learning: boolean): void
 }
@@ -55,6 +56,7 @@ export class DolServer {
   private wss: WsServer | null = null
   private socket: WsSocket | null = null
   private handshaken = false
+  private gameLang = ''
   private lastSeen = 0
   private heartbeat: ReturnType<typeof setInterval> | null = null
   private readonly pending = new Map<string, Pending>()
@@ -238,8 +240,8 @@ export class DolServer {
         this.fail('bad_hello', `协议版本 ${msg.protocol}，需要 ${PROTOCOL_VERSION}`)
         return
       }
-      if (msg.game.lang !== 'en') {
-        this.fail('i18n_detected', `只支持英文原版，当前语言 ${msg.game.lang}`)
+      if (msg.game.lang !== 'en' && msg.game.lang !== 'zh') {
+        this.fail('i18n_detected', `只支持英文原版或中文汉化，当前语言 ${msg.game.lang}`)
         return
       }
       this.handshaken = true
@@ -250,6 +252,7 @@ export class DolServer {
         world: { version: this.opts.version },
         features: ['scene', 'sentence', 'word', 'vocab', 'status', 'sidebar'],
       })
+      this.gameLang = msg.game.lang
       this.setConnected(true)
       this.opts.log.info('dol: 模组已连接', { game: msg.game.version, client: msg.client.version })
       return
@@ -276,6 +279,9 @@ export class DolServer {
         return
       case 'command':
         if (msg.command === 'learning') this.opts.onLearning?.(msg.payload.learning)
+        return
+      case 'config_set':
+        this.opts.onConfigSet?.(msg)
         return
       case 'status':
         this.opts.onStatus?.(msg)
