@@ -947,6 +947,7 @@ export class Ui {
       (next) => {
         this.deps.setUiLang?.(next)
         this.setLocale(next)
+        this.toast(`界面语言：${next}`)
       },
     )
     selectRow(
@@ -959,6 +960,7 @@ export class Ui {
       (next) => {
         this.setTargetLang(next)
         this.deps.setTargetLang?.(next)
+        this.toast(next === 'zh' ? '学习目标：中文（需要汉化模组）' : '学习目标：English')
       },
     )
 

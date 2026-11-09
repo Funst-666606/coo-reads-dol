@@ -24,6 +24,8 @@ export const DOL: WorldDefinition<DolConfig> = {
       throw new Error('worlds.dol.sceneTextLimit 为 0（不限）或至少 200')
     }
     if (cfg.replyTimeoutSec < 5) throw new Error('worlds.dol.replyTimeoutSec 至少 5')
+    if (!cfg.uiLang) cfg.uiLang = 'zh-CN'
+    if (!cfg.targetLang) cfg.targetLang = 'en'
     const uiMap: Record<string, string> = {
       简体中文: 'zh-CN',
       正體中文: 'zh-TW',

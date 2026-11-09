@@ -79,6 +79,14 @@ export class DolWorld implements World {
       cfg.onboardingVersion = 1
       this.deps.persist({ onboarded: false, onboardingVersion: 1 })
     }
+    if (!cfg.uiLang) {
+      cfg.uiLang = 'zh-CN'
+      this.deps.persist({ uiLang: 'zh-CN' })
+    }
+    if (!cfg.targetLang) {
+      cfg.targetLang = 'en'
+      this.deps.persist({ targetLang: 'en' })
+    }
 
     this.mirror = new VocabMirror(join(this.deps.dataDir, 'dol-vocab.json'))
     this.mirror.load()
