@@ -31,7 +31,7 @@ import {
 import { DolServer } from './server.ts'
 import { SFW } from './variant.ts'
 
-const VERSION = '0.1.31'
+const VERSION = '0.1.32'
 const UI_LANG_CODES: Record<string, string> = {
   '简体中文': 'zh-CN',
   '正體中文': 'zh-TW',
@@ -167,7 +167,9 @@ export class DolWorld implements World {
   }
 
   webUi(language?: Language): WorldWebUiDecl {
-    const zh = language !== 'en'
+    const ui = uiLangCode(this.deps.cfg.uiLang)
+    const ru = ui === 'ru'
+    const zh = ui === 'zh-CN' || ui === 'zh-TW'
     const status = this.server?.status()
     return {
       label: zh ? '欲都孤鱼与多邻鱼' : 'Coo companion',
@@ -203,14 +205,14 @@ export class DolWorld implements World {
           owner: 'world:dol',
           schema: {
             type: 'object',
-            title: zh ? '欲都孤鱼与多邻鱼' : 'Coo companion',
+            title: ru ? 'Компаньон Coo' : zh ? '欲都孤鱼与多邻鱼' : 'Coo companion',
             description: zh
               ? '端口改动需要重启 World；其余立即生效。'
               : 'Port changes need a World restart; the rest apply immediately.',
             properties: {
               'worlds.dol.port': {
                 type: 'integer',
-                title: zh ? '本地端口' : 'Local port',
+                title: ru ? 'Локальный порт' : zh ? '本地端口' : 'Local port',
                 description: zh
                   ? '游戏连 127.0.0.1 的这个端口；被占用时自动向上顺延 9 个。'
                   : 'The game connects to this 127.0.0.1 port; 9 ports above are tried if busy.',
@@ -220,33 +222,41 @@ export class DolWorld implements World {
               },
               'worlds.dol.enabled': {
                 type: 'boolean',
-                title: zh ? '启用陪玩' : 'Enabled',
-                description: zh ? '总开关；关闭后不评论、不响应游戏事件。' : 'Master switch.',
+                title: ru ? 'Включить компаньона' : zh ? '启用陪玩' : 'Enabled',
+                description: ru
+                  ? 'Общий переключатель; при выключении нет комментариев и реакции на события.'
+                  : zh ? '总开关；关闭后不评论、不响应游戏事件。' : 'Master switch.',
                 'x-hot': true,
               },
               'worlds.dol.learning': {
                 type: 'boolean',
-                title: zh ? '学习语言模式' : 'Learning mode',
-                description: zh ? '关闭 = 只陪玩，不查词/翻译/生词。' : 'Off = companion only.',
+                title: ru ? 'Режим изучения языка' : zh ? '学习语言模式' : 'Learning mode',
+                description: ru
+                  ? 'Выкл. = только игра, без слов/перевода/словаря.'
+                  : zh ? '关闭 = 只陪玩，不查词/翻译/生词。' : 'Off = companion only.',
                 'x-hot': true,
               },
               'worlds.dol.attitude': {
                 type: 'string',
                 enum: ['strict', 'normal', 'subtle', 'erotic', 'lewd'],
-                title: zh ? '评论态度' : 'Comment attitude',
-                description: zh ? '严谨 / 正常 / 含蓄 / 色情 / 淫乱（后两档需开成人内容）' : 'strict / normal / subtle / erotic / lewd',
+                title: ru ? 'Тон комментариев' : zh ? '评论态度' : 'Comment attitude',
+                description: ru
+                  ? 'строгий / нормальный / сдержанный / эротический / развратный (последние два — при включённом взрослом контенте)'
+                  : zh ? '严谨 / 正常 / 含蓄 / 色情 / 淫乱（后两档需开成人内容）' : 'strict / normal / subtle / erotic / lewd',
                 'x-hot': true,
               },
               'worlds.dol.adult': {
                 type: 'boolean',
-                title: zh ? '成人内容' : 'Adult content',
-                description: zh ? '开启后才可用「色情 / 淫乱」两档。' : 'Required for erotic/lewd.',
+                title: ru ? 'Контент для взрослых' : zh ? '成人内容' : 'Adult content',
+                description: ru
+                  ? 'Нужен для эротического/развратного тона.'
+                  : zh ? '开启后才可用「色情 / 淫乱」两档。' : 'Required for erotic/lewd.',
                 'x-hot': true,
               },
               'worlds.dol.mode': {
                 type: 'string',
                 enum: ['proactive', 'trigger', 'passive'],
-                title: zh ? '陪读模式' : 'Mode',
+                title: ru ? 'Режим компаньона' : zh ? '陪读模式' : 'Mode',
                 description: zh
                   ? 'proactive 主动 / trigger 触发 / passive 被动'
                   : 'proactive / trigger / passive',
@@ -254,16 +264,18 @@ export class DolWorld implements World {
               },
               'worlds.dol.maxCommentsPerDay': {
                 type: 'integer',
-                title: zh ? '每日评论上限' : 'Comments per day',
-                description: zh ? '0 = 不限' : '0 = unlimited',
+                title: ru ? 'Комментариев в день' : zh ? '每日评论上限' : 'Comments per day',
+                description: ru ? '0 = без ограничений' : zh ? '0 = 不限' : '0 = unlimited',
                 minimum: 0,
                 maximum: 500,
                 'x-hot': true,
               },
               'worlds.dol.sceneTextLimit': {
                 type: 'integer',
-                title: zh ? '场景文本上限' : 'Scene text limit',
-                description: zh ? '发给 Coo 的正文字符数；0 = 不限' : 'Characters sent to Coo; 0 = unlimited',
+                title: ru ? 'Лимит текста сцены' : zh ? '场景文本上限' : 'Scene text limit',
+                description: ru
+                  ? 'Символов текста для Coo; 0 = без ограничений'
+                  : zh ? '发给 Coo 的正文字符数；0 = 不限' : 'Characters sent to Coo; 0 = unlimited',
                 minimum: 0,
                 maximum: 12000,
                 'x-suffix': zh ? '字' : 'chars',
@@ -271,36 +283,46 @@ export class DolWorld implements World {
               },
               'worlds.dol.statusPageLimit': {
                 type: 'integer',
-                title: zh ? '状态页单页上限' : 'Status page limit',
-                description: zh ? '每个二级页面最多抓多少字；0 = 不限' : 'Characters per page; 0 = unlimited',
+                title: ru ? 'Лимит страницы статуса' : zh ? '状态页单页上限' : 'Status page limit',
+                description: ru
+                  ? 'Символов с каждой страницы; 0 = без ограничений'
+                  : zh ? '每个二级页面最多抓多少字；0 = 不限' : 'Characters per page; 0 = unlimited',
                 minimum: 0,
                 'x-suffix': zh ? '字' : 'chars',
                 'x-hot': true,
               },
               'worlds.dol.statusTotalLimit': {
                 type: 'integer',
-                title: zh ? '状态抓取总上限' : 'Status total limit',
-                description: zh ? '四页合计最多多少字；0 = 不限' : 'Total characters across pages; 0 = unlimited',
+                title: ru ? 'Общий лимит статуса' : zh ? '状态抓取总上限' : 'Status total limit',
+                description: ru
+                  ? 'Всего символов с четырёх страниц; 0 = без ограничений'
+                  : zh ? '四页合计最多多少字；0 = 不限' : 'Total characters across pages; 0 = unlimited',
                 minimum: 0,
                 'x-suffix': zh ? '字' : 'chars',
                 'x-hot': true,
               },
               'worlds.dol.uiLang': {
                 type: 'string',
-                title: zh ? '界面语言' : 'Interface language',
-                description: zh ? '面板、提示与 Coo 回复使用的语言' : 'Language for panel, notices and Coo replies',
+                title: ru ? 'Язык интерфейса' : zh ? '界面语言' : 'Interface language',
+                description: ru
+                  ? 'Язык панели, уведомлений и ответов Coo'
+                  : zh ? '面板、提示与 Coo 回复使用的语言' : 'Language for panel, notices and Coo replies',
                 enum: ['简体中文', '正體中文', 'English', 'Русский', '日本語'],
-              },
+                default: '简体中文',
+              } as never,
               'worlds.dol.targetLang': {
                 type: 'string',
-                title: zh ? '学习目标语言' : 'Target language',
-                description: zh ? '想学的语言：英语，或中文（需要 DoL 汉化模组）' : 'Language to learn: English, or Chinese (needs a DoL translation mod)',
+                title: ru ? 'Изучаемый язык' : zh ? '学习目标语言' : 'Target language',
+                description: ru
+                  ? 'Английский или китайский (нужен русификатор DoL)'
+                  : zh ? '想学的语言：英语，或中文（需要 DoL 汉化模组）' : 'Language to learn: English, or Chinese (needs a DoL translation mod)',
                 enum: ['English', '中文'],
-              },
+                default: 'English',
+              } as never,
               'worlds.dol.replyTimeoutSec': {
                 type: 'integer',
-                title: zh ? '讲解超时' : 'Reply timeout',
-                description: zh ? '等 Coo 回传的最长秒数' : 'Seconds to wait for Coo',
+                title: ru ? 'Тайм-аут ответа' : zh ? '讲解超时' : 'Reply timeout',
+                description: ru ? 'Сколько секунд ждать Coo' : zh ? '等 Coo 回传的最长秒数' : 'Seconds to wait for Coo',
                 minimum: 5,
                 maximum: 120,
                 'x-suffix': 's',
