@@ -22,7 +22,7 @@ import { applyVocabCommand } from './vocab-commands.ts'
 
 const TAG = '[CooBridge]'
 let detectedI18n: string | null = null
-const CLIENT_VERSION = '0.1.41'
+const CLIENT_VERSION = '0.1.42'
 const SUPPORTED_GAME = '0.5.12.13'
 const PORT_BASE = 17321
 const PORT_COUNT = 10

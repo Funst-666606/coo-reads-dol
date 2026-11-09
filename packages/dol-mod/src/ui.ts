@@ -1218,5 +1218,5 @@ function download(filename: string, content: string, mime: string): void {
 
 /** Coo 单词补充按单词缓存：换场景/重开后仍能带出。 */
 function wordCacheKey(word: string): string {
-  return `w|${word.trim().toLowerCase()}`
+  return `w2|${word.trim().toLowerCase()}`
 }
