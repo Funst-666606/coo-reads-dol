@@ -42,7 +42,6 @@ export function observeLocale(el: Node): void {
   new MO(() => localizeDom(el as ParentNode)).observe(el, {
     childList: true,
     subtree: true,
-    characterData: true,
   })
 }
 
@@ -59,7 +58,7 @@ export function localizeDom(root: ParentNode | null | undefined): void {
     const key = raw.trim()
     if (key) {
       const translated = DICT[key]?.[localeKey]
-      if (translated) {
+      if (translated && translated !== key) {
         node.nodeValue = raw.replace(key, translated)
       }
     }
