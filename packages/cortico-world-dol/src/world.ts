@@ -17,6 +17,7 @@ import {
   type DolConfig,
   type DolMode,
 } from './config.ts'
+import { uiText } from './ui-text.ts'
 import {
   type ChoiceMsg,
   type RootPart,
@@ -31,7 +32,7 @@ import {
 import { DolServer } from './server.ts'
 import { SFW } from './variant.ts'
 
-const VERSION = '0.1.32'
+const VERSION = '0.1.33'
 const UI_LANG_CODES: Record<string, string> = {
   '简体中文': 'zh-CN',
   '正體中文': 'zh-TW',
@@ -170,12 +171,13 @@ export class DolWorld implements World {
     const ui = uiLangCode(this.deps.cfg.uiLang)
     const ru = ui === 'ru'
     const zh = ui === 'zh-CN' || ui === 'zh-TW'
+    const L = (key: string): string => uiText(key, ui) ?? key
     const status = this.server?.status()
     return {
-      label: zh ? '欲都孤鱼与多邻鱼' : 'Coo companion',
+      label: L('欲都孤鱼与多邻鱼'),
       lamps: [
         {
-          label: zh ? '游戏连接' : 'Game link',
+          label: L('游戏连接'),
           state: status?.connected ? 'online' : 'offline',
           hint: `127.0.0.1:${status?.port ?? this.deps.cfg.port}`,
         },
@@ -183,10 +185,8 @@ export class DolWorld implements World {
       promptDocs: [
         {
           key: 'worlds.dol.env',
-          title: zh ? '欲都孤鱼与多邻鱼环境提示' : 'DoL tutor environment',
-          description: zh
-            ? '告诉 Coo 怎么读 DoL 的事件、怎么回答查词与问句'
-            : 'How Coo reads DoL events and answers lookups',
+          title: L('环境提示'),
+          description: L('环境提示说明'),
           path: fileURLToPath(new URL('./ENV_PROMPT.md', import.meta.url)),
           role: 'envPrompt',
         },
@@ -194,8 +194,8 @@ export class DolWorld implements World {
       panels: [
         {
           id: 'main',
-          title: zh ? '陪读' : 'Tutor',
-          description: zh ? '连接状态、模式、生词镜像与导出' : 'Link, mode, vocab mirror and export',
+          title: L('陪读'),
+          description: L('陪读说明'),
           getMethods: ['status', 'vocab'],
         },
       ],
@@ -205,124 +205,100 @@ export class DolWorld implements World {
           owner: 'world:dol',
           schema: {
             type: 'object',
-            title: ru ? 'Компаньон Coo' : zh ? '欲都孤鱼与多邻鱼' : 'Coo companion',
-            description: zh
-              ? '端口改动需要重启 World；其余立即生效。'
-              : 'Port changes need a World restart; the rest apply immediately.',
+            title: L('欲都孤鱼与多邻鱼'),
+            description: L('端口改动需要重启World其余立即生效'),
             properties: {
               'worlds.dol.port': {
                 type: 'integer',
-                title: ru ? 'Локальный порт' : zh ? '本地端口' : 'Local port',
-                description: zh
-                  ? '游戏连 127.0.0.1 的这个端口；被占用时自动向上顺延 9 个。'
-                  : 'The game connects to this 127.0.0.1 port; 9 ports above are tried if busy.',
+                title: L('本地端口'),
+                description: L('游戏连这个端口'),
                 minimum: 1024,
                 maximum: 65535,
                 'x-hot': false,
               },
               'worlds.dol.enabled': {
                 type: 'boolean',
-                title: ru ? 'Включить компаньона' : zh ? '启用陪玩' : 'Enabled',
-                description: ru
-                  ? 'Общий переключатель; при выключении нет комментариев и реакции на события.'
-                  : zh ? '总开关；关闭后不评论、不响应游戏事件。' : 'Master switch.',
+                title: L('启用陪玩'),
+                description: L('总开关'),
                 'x-hot': true,
               },
               'worlds.dol.learning': {
                 type: 'boolean',
-                title: ru ? 'Режим изучения языка' : zh ? '学习语言模式' : 'Learning mode',
-                description: ru
-                  ? 'Выкл. = только игра, без слов/перевода/словаря.'
-                  : zh ? '关闭 = 只陪玩，不查词/翻译/生词。' : 'Off = companion only.',
+                title: L('学习语言模式'),
+                description: L('关闭只陪玩'),
                 'x-hot': true,
               },
               'worlds.dol.attitude': {
                 type: 'string',
                 enum: ['strict', 'normal', 'subtle', 'erotic', 'lewd'],
-                title: ru ? 'Тон комментариев' : zh ? '评论态度' : 'Comment attitude',
-                description: ru
-                  ? 'строгий / нормальный / сдержанный / эротический / развратный (последние два — при включённом взрослом контенте)'
-                  : zh ? '严谨 / 正常 / 含蓄 / 色情 / 淫乱（后两档需开成人内容）' : 'strict / normal / subtle / erotic / lewd',
+                title: L('评论态度'),
+                description: L('态度列表'),
                 'x-hot': true,
               },
               'worlds.dol.adult': {
                 type: 'boolean',
-                title: ru ? 'Контент для взрослых' : zh ? '成人内容' : 'Adult content',
-                description: ru
-                  ? 'Нужен для эротического/развратного тона.'
-                  : zh ? '开启后才可用「色情 / 淫乱」两档。' : 'Required for erotic/lewd.',
+                title: L('成人内容'),
+                description: L('成人内容说明'),
                 'x-hot': true,
               },
               'worlds.dol.mode': {
                 type: 'string',
                 enum: ['proactive', 'trigger', 'passive'],
-                title: ru ? 'Режим компаньона' : zh ? '陪读模式' : 'Mode',
-                description: zh
-                  ? 'proactive 主动 / trigger 触发 / passive 被动'
-                  : 'proactive / trigger / passive',
+                title: L('陪读模式'),
+                description: L('模式列表'),
                 'x-hot': true,
               },
               'worlds.dol.maxCommentsPerDay': {
                 type: 'integer',
-                title: ru ? 'Комментариев в день' : zh ? '每日评论上限' : 'Comments per day',
-                description: ru ? '0 = без ограничений' : zh ? '0 = 不限' : '0 = unlimited',
+                title: L('每日评论上限'),
+                description: L('不限'),
                 minimum: 0,
                 maximum: 500,
                 'x-hot': true,
               },
               'worlds.dol.sceneTextLimit': {
                 type: 'integer',
-                title: ru ? 'Лимит текста сцены' : zh ? '场景文本上限' : 'Scene text limit',
-                description: ru
-                  ? 'Символов текста для Coo; 0 = без ограничений'
-                  : zh ? '发给 Coo 的正文字符数；0 = 不限' : 'Characters sent to Coo; 0 = unlimited',
+                title: L('场景文本上限'),
+                description: L('场景文本说明'),
                 minimum: 0,
                 maximum: 12000,
-                'x-suffix': zh ? '字' : 'chars',
+                'x-suffix': L('字'),
                 'x-hot': true,
               },
               'worlds.dol.statusPageLimit': {
                 type: 'integer',
-                title: ru ? 'Лимит страницы статуса' : zh ? '状态页单页上限' : 'Status page limit',
-                description: ru
-                  ? 'Символов с каждой страницы; 0 = без ограничений'
-                  : zh ? '每个二级页面最多抓多少字；0 = 不限' : 'Characters per page; 0 = unlimited',
+                title: L('状态页单页上限'),
+                description: L('状态页单页说明'),
                 minimum: 0,
-                'x-suffix': zh ? '字' : 'chars',
+                'x-suffix': L('字'),
                 'x-hot': true,
               },
               'worlds.dol.statusTotalLimit': {
                 type: 'integer',
-                title: ru ? 'Общий лимит статуса' : zh ? '状态抓取总上限' : 'Status total limit',
-                description: ru
-                  ? 'Всего символов с четырёх страниц; 0 = без ограничений'
-                  : zh ? '四页合计最多多少字；0 = 不限' : 'Total characters across pages; 0 = unlimited',
+                title: L('状态抓取总上限'),
+                description: L('状态抓取总说明'),
                 minimum: 0,
-                'x-suffix': zh ? '字' : 'chars',
+                'x-suffix': L('字'),
                 'x-hot': true,
               },
               'worlds.dol.uiLang': {
                 type: 'string',
-                title: ru ? 'Язык интерфейса' : zh ? '界面语言' : 'Interface language',
-                description: ru
-                  ? 'Язык панели, уведомлений и ответов Coo'
-                  : zh ? '面板、提示与 Coo 回复使用的语言' : 'Language for panel, notices and Coo replies',
+                title: L('界面语言'),
+                description: L('界面语言说明'),
                 enum: ['简体中文', '正體中文', 'English', 'Русский', '日本語'],
                 default: '简体中文',
               } as never,
               'worlds.dol.targetLang': {
                 type: 'string',
-                title: ru ? 'Изучаемый язык' : zh ? '学习目标语言' : 'Target language',
-                description: ru
-                  ? 'Английский или китайский (нужен русификатор DoL)'
-                  : zh ? '想学的语言：英语，或中文（需要 DoL 汉化模组）' : 'Language to learn: English, or Chinese (needs a DoL translation mod)',
+                title: L('学习目标语言'),
+                description: L('学习目标说明'),
                 enum: ['English', '中文'],
                 default: 'English',
               } as never,
               'worlds.dol.replyTimeoutSec': {
                 type: 'integer',
-                title: ru ? 'Тайм-аут ответа' : zh ? '讲解超时' : 'Reply timeout',
-                description: ru ? 'Сколько секунд ждать Coo' : zh ? '等 Coo 回传的最长秒数' : 'Seconds to wait for Coo',
+                title: L('讲解超时'),
+                description: L('讲解超时说明'),
                 minimum: 5,
                 maximum: 120,
                 'x-suffix': 's',
